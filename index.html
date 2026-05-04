@@ -582,6 +582,12 @@ async function init() {
 
     // Check online status
     updateOnlineStatus();
+
+    // Notificaciones del navegador
+    requestNotificationPermission();
+
+    // Sync de respaldo cada 45s
+    startPeriodicSync();
 }
 
 function setupDateInputs() {
@@ -696,8 +702,8 @@ async function syncWithSupabase() {
 
 // ==================== REALTIME SUBSCRIPTIONS ====================
 function setupRealtime() {
-    // Subscribe to pedidos changes
-    syncChannel = supabase.channel('logistica-changes')
+    if (syncChannel) syncChannel.unsubscribe();
+    syncChannel = supabase.channel('logistica-v2-' + Date.now())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, payload => {
             handleRealtimeChange('pedidos', payload);
         })
@@ -707,7 +713,20 @@ function setupRealtime() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'sucursales' }, payload => {
             handleRealtimeChange('sucursales', payload);
         })
-        .subscribe();
+        .subscribe(status => {
+            if (status === 'SUBSCRIBED') {
+                showSyncStatus('online');
+                setTimeout(() => document.getElementById('syncStatus').classList.remove('online'), 2000);
+            }
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                setTimeout(() => { if (navigator.onLine) setupRealtime(); }, 5000);
+            }
+        });
+
+    // Reconexión automática cada 90s si se cayó
+    setTimeout(() => {
+        if (syncChannel?.state !== 'joined' && navigator.onLine) setupRealtime();
+    }, 90000);
 }
 
 function handleRealtimeChange(table, payload) {
@@ -732,6 +751,10 @@ function handleRealtimeChange(table, payload) {
             }
         } else if (eventType === 'DELETE') {
             DB.pedidos = DB.pedidos.filter(p => p.id !== oldRecord.id);
+        }
+        // Notificaciones en tiempo real
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+            triggerPedidoNotification(newRecord, eventType, oldRecord);
         }
         renderOrders();
         renderAllOrders();
@@ -1679,6 +1702,86 @@ function resetData() {
 }
 
 // ==================== UTILITIES ====================
+// ==================== NOTIFICACIONES ====================
+async function requestNotificationPermission() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') showToast('🔔 Notificaciones activadas');
+    }
+}
+
+function showBrowserNotification(title, body) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+        const n = new Notification(title, {
+            body,
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🚚</text></svg>',
+            tag: 'logistica-pro',
+            renotify: true,
+            requireInteraction: false
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+        setTimeout(() => n.close(), 8000);
+    } catch(e) {}
+    playNotificationSound();
+    if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+}
+
+function playNotificationSound() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [0, 0.18].forEach(t => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 880;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0, ctx.currentTime + t);
+            gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + t + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.35);
+            osc.start(ctx.currentTime + t);
+            osc.stop(ctx.currentTime + t + 0.35);
+        });
+    } catch(e) {}
+}
+
+function triggerPedidoNotification(record, eventType, oldRecord) {
+    const suc = DB.sucursales.find(s => s.id === record.sucursal_id);
+    const rep = DB.repartidores.find(r => r.id === record.repartidor_id);
+    const sucNombre = suc?.nombre || 'Sucursal';
+    const repNombre = rep?.nombre || 'Repartidor';
+
+    if (!isAdmin) {
+        // Repartidor: aviso cuando le asignan un pedido
+        const myRep = DB.repartidores.find(r => r.nombre === DB.config.repartidorName);
+        if (!myRep || record.repartidor_id !== myRep.id) return;
+        if (eventType === 'INSERT') {
+            showBrowserNotification('📋 Nuevo pedido asignado', `🏪 ${sucNombre}`);
+        } else if (eventType === 'UPDATE' && oldRecord?.repartidor_id !== record.repartidor_id) {
+            showBrowserNotification('📋 Pedido asignado', `🏪 ${sucNombre}`);
+        }
+    } else {
+        // Admin: aviso cuando cambia el estado de un pedido
+        if (eventType !== 'UPDATE' || oldRecord?.estado === record.estado) return;
+        const notifs = {
+            en_ruta:   ['🚚 En ruta',          `${repNombre} → ${sucNombre}`],
+            entregado: ['✅ Entrega confirmada', `${repNombre} → ${sucNombre}`],
+            parcial:   ['⚠️ Entrega parcial',   `${repNombre} → ${sucNombre}`],
+            fallido:   ['❌ Entrega fallida',    `${repNombre} → ${sucNombre}`]
+        };
+        const n = notifs[record.estado];
+        if (n) showBrowserNotification(n[0], n[1]);
+    }
+}
+
+function startPeriodicSync() {
+    setInterval(() => {
+        if (navigator.onLine && !document.hidden) syncWithSupabase();
+    }, 45000);
+}
+
 function showModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
