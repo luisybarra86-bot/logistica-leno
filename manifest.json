@@ -1,0 +1,20 @@
+{
+  "name": "Logística Leno",
+  "short_name": "Logística",
+  "description": "Gestión de entregas y pedidos - Leno",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#1a237e",
+  "theme_color": "#1a237e",
+  "orientation": "portrait-primary",
+  "lang": "es",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
