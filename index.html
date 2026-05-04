@@ -1,0 +1,1845 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a237e">
+    <title>Logística Pro - Online</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #1a237e; --primary-light: #3949ab; --secondary: #00acc1;
+            --success: #43a047; --warning: #fb8c00; --danger: #e53935;
+            --gray: #757575; --light-gray: #f5f5f5; --white: #ffffff;
+            --shadow: 0 2px 8px rgba(0,0,0,0.15); --shadow-lg: 0 4px 16px rgba(0,0,0,0.2);
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--light-gray); color: #333; line-height: 1.5;
+            -webkit-tap-highlight-color: transparent; font-size: 16px;
+        }
+        .header {
+            background: var(--primary); color: white; padding: 14px 16px;
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center;
+        }
+        .header h1 { font-size: 1.2rem; font-weight: 700; }
+        .header-sub { font-size: 0.8rem; opacity: 0.9; }
+        .sync-status {
+            position: fixed; top: 60px; right: 12px; z-index: 999;
+            padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;
+            display: none; transition: all 0.3s;
+        }
+        .sync-status.online { background: #e8f5e9; color: var(--success); display: block; }
+        .sync-status.offline { background: #ffebee; color: var(--danger); display: block; }
+        .sync-status.syncing { background: #fff8e1; color: #f57f17; display: block; }
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0; background: white;
+            display: flex; justify-content: space-around; padding: 10px 0 8px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.12); z-index: 1000;
+        }
+        .nav-item { flex: 1; text-align: center; padding: 4px; cursor: pointer; color: var(--gray); font-size: 0.72rem; font-weight: 500; transition: all 0.2s; }
+        .nav-item.active { color: var(--primary); }
+        .nav-item .icon { font-size: 1.5rem; display: block; margin-bottom: 3px; }
+        .content { padding: 72px 12px 90px 12px; max-width: 900px; margin: 0 auto; }
+        .card {
+            background: white; border-radius: 14px; padding: 18px; margin-bottom: 14px;
+            box-shadow: var(--shadow); transition: transform 0.15s;
+        }
+        .card:active { transform: scale(0.995); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .card-title { font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+        .badge { padding: 5px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; }
+        .badge-pending { background: #fff3e0; color: #e65100; }
+        .badge-route { background: #e3f2fd; color: #1565c0; }
+        .badge-delivered { background: #e8f5e9; color: #2e7d32; }
+        .badge-failed { background: #ffebee; color: #c62828; }
+        .badge-partial { background: #fff8e1; color: #f57f17; }
+        .btn {
+            border: none; border-radius: 10px; padding: 14px 20px; font-size: 1rem; font-weight: 700;
+            cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; margin-bottom: 10px; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn:active { transform: scale(0.97); box-shadow: none; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-secondary { background: #e8eaf6; color: var(--primary); }
+        .btn-outline { background: white; color: var(--primary); border: 2px solid var(--primary); }
+        .btn-small { padding: 8px 14px; font-size: 0.85rem; width: auto; }
+        .btn-tiny { padding: 6px 10px; font-size: 0.75rem; width: auto; }
+        .form-group { margin-bottom: 18px; }
+        .form-label { display: block; font-size: 0.9rem; font-weight: 700; color: #444; margin-bottom: 8px; }
+        .form-input, .form-select, .form-textarea {
+            width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 10px;
+            font-size: 1.05rem; transition: all 0.2s; font-family: inherit; background: #fafafa;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(26,35,126,0.1); }
+        .form-textarea { min-height: 100px; resize: vertical; }
+        .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23757575' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 40px; }
+        .list-item {
+            background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px;
+            box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: flex-start;
+            cursor: pointer; transition: all 0.2s; border-left: 4px solid transparent;
+        }
+        .list-item:active { transform: scale(0.99); }
+        .list-item.pending { border-left-color: var(--warning); }
+        .list-item.route { border-left-color: var(--primary-light); }
+        .list-item.delivered { border-left-color: var(--success); }
+        .list-item.failed { border-left-color: var(--danger); }
+        .list-item.partial { border-left-color: #f57f17; }
+        .list-item-info { flex: 1; min-width: 0; }
+        .list-item-title { font-weight: 700; color: var(--primary); margin-bottom: 6px; font-size: 1.05rem; }
+        .list-item-sub { font-size: 0.9rem; color: var(--gray); margin-bottom: 3px; }
+        .list-item-products { font-size: 0.85rem; color: #666; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #e0e0e0; }
+        .list-item-action { margin-left: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+        .checklist-item { display: flex; align-items: center; padding: 14px; background: var(--light-gray); border-radius: 10px; margin-bottom: 10px; }
+        .checklist-item input[type="checkbox"] { width: 26px; height: 26px; margin-right: 14px; accent-color: var(--success); cursor: pointer; }
+        .checklist-item label { flex: 1; font-weight: 600; font-size: 1.05rem; }
+        .checklist-item .qty { color: var(--gray); font-size: 0.95rem; font-weight: 500; }
+        .checklist-item.delivered { background: #e8f5e9; border: 2px solid var(--success); }
+        .checklist-item.failed { background: #ffebee; border: 2px solid var(--danger); }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 18px; }
+        .stat-card { background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: var(--shadow); }
+        .stat-number { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
+        .stat-label { font-size: 0.85rem; color: var(--gray); margin-top: 4px; font-weight: 500; }
+        .photo-upload { border: 2px dashed #ccc; border-radius: 12px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .photo-upload:active { background: var(--light-gray); border-color: var(--primary); }
+        .photo-preview { max-width: 100%; border-radius: 10px; margin-top: 12px; box-shadow: var(--shadow); }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: none; justify-content: center; align-items: flex-end; backdrop-filter: blur(2px); }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; width: 100%; max-width: 600px; max-height: 92vh; border-radius: 20px 20px 0 0; padding: 24px; overflow-y: auto; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid var(--light-gray); }
+        .modal-title { font-size: 1.3rem; font-weight: 700; color: var(--primary); }
+        .modal-close { background: none; border: none; font-size: 1.8rem; cursor: pointer; color: var(--gray); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background 0.2s; }
+        .modal-close:active { background: var(--light-gray); }
+        .table-responsive { overflow-x: auto; border-radius: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: var(--light-gray); font-weight: 700; color: var(--primary); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        tr:hover { background: #fafafa; }
+        .telegram-config { background: #e3f2fd; border-radius: 12px; padding: 18px; margin-bottom: 18px; border: 2px solid #bbdefb; }
+        .offline-banner { background: var(--danger); color: white; text-align: center; padding: 8px; font-size: 0.85rem; position: fixed; top: 60px; left: 0; right: 0; z-index: 999; display: none; font-weight: 600; }
+        .offline-banner.active { display: block; }
+        .search-box { position: relative; margin-bottom: 18px; }
+        .search-box input { padding-left: 44px; }
+        .search-box .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--gray); font-size: 1.1rem; }
+        .section { display: none; }
+        .section.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 14px 24px; border-radius: 10px; font-size: 0.95rem; z-index: 3000; opacity: 0; transition: opacity 0.3s; pointer-events: none; font-weight: 500; box-shadow: var(--shadow-lg); }
+        .toast.show { opacity: 1; }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--gray); }
+        .empty-state-icon { font-size: 3.5rem; margin-bottom: 12px; opacity: 0.6; }
+        .status-timeline { display: flex; align-items: center; margin: 16px 0; padding: 12px; background: var(--light-gray); border-radius: 10px; }
+        .status-step { flex: 1; text-align: center; font-size: 0.8rem; font-weight: 600; color: var(--gray); position: relative; }
+        .status-step.active { color: var(--primary); }
+        .status-step.completed { color: var(--success); }
+        .status-step::after { content: ''; position: absolute; top: 50%; right: -50%; width: 100%; height: 2px; background: #e0e0e0; z-index: 0; }
+        .status-step:last-child::after { display: none; }
+        .status-step.completed::after { background: var(--success); }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+        .product-chip { background: white; border: 2px solid #e0e0e0; border-radius: 12px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+        .product-chip:active { transform: scale(0.97); }
+        .product-chip.selected { border-color: var(--primary); background: #e8eaf6; box-shadow: 0 0 0 3px rgba(26,35,126,0.1); }
+        .product-chip .name { font-size: 0.85rem; font-weight: 600; color: #333; margin-bottom: 4px; line-height: 1.3; }
+        .product-chip .stock { font-size: 0.75rem; color: var(--gray); }
+        .product-chip .qty-badge { position: absolute; top: -8px; right: -8px; background: var(--primary); color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; box-shadow: var(--shadow); }
+        .delivery-preview { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+        .delivery-preview-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+        .delivery-preview-sub { font-size: 0.9rem; opacity: 0.9; }
+        .quick-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+        .quick-action-btn { background: white; border: 2px solid #e0e0e0; border-radius: 12px; padding: 16px 12px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .quick-action-btn:active { background: var(--light-gray); border-color: var(--primary); transform: scale(0.98); }
+        .quick-action-btn .icon { font-size: 1.8rem; margin-bottom: 6px; display: block; }
+        .quick-action-btn .label { font-size: 0.85rem; font-weight: 600; color: #444; }
+        .tag { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; margin-right: 6px; margin-bottom: 4px; }
+        .tag-packaging { background: #e8eaf6; color: var(--primary); }
+        .tag-descartables { background: #e0f2f1; color: #00695c; }
+        .tag-lacteos { background: #fff3e0; color: #e65100; }
+        .product-counter { display: inline-flex; align-items: center; background: white; border: 2px solid #e0e0e0; border-radius: 10px; overflow: hidden; }
+        .product-counter button { border: none; background: var(--light-gray); padding: 8px 14px; font-size: 1.2rem; cursor: pointer; font-weight: 700; color: var(--primary); }
+        .product-counter button:active { background: #e0e0e0; }
+        .product-counter input { border: none; width: 50px; text-align: center; font-size: 1rem; font-weight: 700; padding: 8px; }
+        .sucursal-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); cursor: pointer; transition: all 0.2s; }
+        .sucursal-card:active { transform: scale(0.99); }
+        .sucursal-card-title { font-weight: 700; color: var(--primary); font-size: 1.05rem; margin-bottom: 6px; }
+        .sucursal-card-info { font-size: 0.9rem; color: var(--gray); margin-bottom: 10px; }
+        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: white; animation: spin 1s ease-in-out infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (min-width: 768px) {
+            .content { padding-top: 80px; padding-bottom: 100px; }
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+            .modal { border-radius: 16px; max-height: 85vh; margin: auto 0; }
+            .product-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+            .quick-actions { grid-template-columns: repeat(4, 1fr); }
+        }
+        /* Sistema de roles */
+        .admin-only { display: none; }
+        body.is-admin .admin-only { display: block; }
+        body.is-admin .nav-item.admin-only { display: flex; }
+        body.is-admin .btn.admin-only { display: inline-flex; }
+        .role-badge { padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+        .badge-admin { background: #fce4ec; color: #c62828; }
+        .badge-rep { background: #e8f5e9; color: #2e7d32; }
+        /* Insumos */
+        .unit-badge { display: inline-block; background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+        .insumo-detail { font-size: 0.82rem; color: var(--gray); margin-top: 3px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    </style>
+</head>
+<body>
+    <div class="sync-status" id="syncStatus">🔄 Sincronizando...</div>
+    <div class="offline-banner" id="offlineBanner">⚠️ Sin conexión - Los cambios se guardarán localmente</div>
+    <div class="header">
+        <div>
+            <h1>🚚 Logística Pro <span id="roleBadge" class="role-badge"></span></h1>
+            <div class="header-sub" id="headerSub">Online • Sincronizado</div>
+        </div>
+        <div style="font-size: 1.4rem; cursor: pointer;" onclick="showSection('config')">⚙️</div>
+    </div>
+
+    <div class="content">
+        <!-- DASHBOARD -->
+        <div id="section-dashboard" class="section active">
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-number" id="statPending">0</div><div class="stat-label">📋 Pendientes</div></div>
+                <div class="stat-card"><div class="stat-number" id="statRoute">0</div><div class="stat-label">🚚 En Ruta</div></div>
+                <div class="stat-card"><div class="stat-number" id="statDelivered">0</div><div class="stat-label">✅ Entregados</div></div>
+                <div class="stat-card"><div class="stat-number" id="statFailed">0</div><div class="stat-label">❌ Fallidos</div></div>
+            </div>
+            <div class="quick-actions">
+                <div class="quick-action-btn" onclick="showModal('newOrderModal')"><span class="icon">📋</span><span class="label">Nuevo Pedido</span></div>
+                <div class="quick-action-btn" onclick="showSection('sucursales')"><span class="icon">🏪</span><span class="label">Sucursales</span></div>
+                <div class="quick-action-btn" onclick="showSection('stock')"><span class="icon">📦</span><span class="label">Stock</span></div>
+                <div class="quick-action-btn" onclick="showSection('reports')"><span class="icon">📊</span><span class="label">Reportes</span></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><span class="card-title">📋 Pedidos de Hoy</span><span style="font-size: 0.85rem; color: var(--gray);" id="todayCount">0 pedidos</span></div>
+                <div class="search-box"><span class="search-icon">🔍</span><input type="text" class="form-input" id="searchOrders" placeholder="Buscar por sucursal, repartidor..." onkeyup="filterOrders()"></div>
+                <div id="ordersList"><div class="empty-state"><div class="loading"></div><div style="margin-top: 12px;">Cargando...</div></div></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><span class="card-title">📦 Stock Depósito Central</span><button class="btn btn-small btn-secondary" onclick="showSection('insumos')">Ver Todo →</button></div>
+                <div id="stockPreview"><div class="empty-state"><div class="loading"></div></div></div>
+            </div>
+        </div>
+
+        <!-- SUCURSALES -->
+        <div id="section-sucursales" class="section">
+            <div class="card">
+                <div class="card-header"><span class="card-title">🏪 Sucursales</span><button class="btn btn-small btn-primary" onclick="showModal('newSucursalModal')">+ Nueva</button></div>
+                <div class="search-box"><span class="search-icon">🔍</span><input type="text" class="form-input" id="searchSucursales" placeholder="Buscar sucursal..." onkeyup="filterSucursales()"></div>
+                <div id="sucursalesList"><div class="empty-state"><div class="loading"></div><div style="margin-top: 12px;">Cargando...</div></div></div>
+            </div>
+        </div>
+
+        <!-- PEDIDOS -->
+        <div id="section-orders" class="section">
+            <div class="card">
+                <div class="card-header"><span class="card-title">📋 Todos los Pedidos</span><button class="btn btn-small btn-primary" onclick="showModal('newOrderModal')">+ Nuevo</button></div>
+                <div class="search-box"><span class="search-icon">🔍</span><input type="text" class="form-input" id="searchAllOrders" placeholder="Buscar..." onkeyup="filterAllOrders()"></div>
+                <div id="allOrdersList"><div class="empty-state"><div class="loading"></div><div style="margin-top: 12px;">Cargando...</div></div></div>
+            </div>
+        </div>
+
+        <!-- STOCK -->
+        <div id="section-stock" class="section">
+            <div class="card">
+                <div class="card-header"><span class="card-title">📦 Stock Depósito Central</span><button class="btn btn-small btn-primary" onclick="showModal('addStockModal')">+ Agregar</button></div>
+                <div class="search-box"><span class="search-icon">🔍</span><input type="text" class="form-input" id="searchStock" placeholder="Buscar producto..." onkeyup="filterStock()"></div>
+                <div id="stockList"><div class="empty-state"><div class="loading"></div><div style="margin-top: 12px;">Cargando...</div></div></div>
+            </div>
+        </div>
+
+        <!-- ENTREGAS -->
+        <div id="section-deliveries" class="section">
+            <div id="repartidorView"><div class="empty-state"><div class="loading"></div><div style="margin-top: 12px;">Cargando...</div></div></div>
+        </div>
+
+        <!-- REPORTES -->
+        <div id="section-reports" class="section">
+            <div class="card">
+                <div class="card-header"><span class="card-title">📊 Reportes</span></div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px;">
+                    <button class="btn btn-secondary" style="margin-bottom: 0;" onclick="showReport('failed')">❌ Fallidas</button>
+                    <button class="btn btn-secondary" style="margin-bottom: 0;" onclick="showReport('daily')">📅 Diario</button>
+                    <button class="btn btn-secondary" style="margin-bottom: 0;" onclick="showReport('sucursal')">🏪 Sucursal</button>
+                    <button class="btn btn-secondary" style="margin-bottom: 0;" onclick="showReport('repartidor')">👤 Repartidor</button>
+                </div>
+                <div id="reportContent"><div class="empty-state"><div class="loading"></div></div></div>
+            </div>
+        </div>
+
+        <!-- INSUMOS -->
+        <div id="section-insumos" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">🧴 Insumos</span>
+                    <button class="btn btn-small btn-primary admin-only" onclick="openNewInsumoModal()">+ Nuevo</button>
+                </div>
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="form-input" id="searchInsumos" placeholder="Buscar insumo..." onkeyup="filterInsumos()">
+                </div>
+                <div id="insumosList"><div class="empty-state"><div class="loading"></div><div style="margin-top:12px;">Cargando...</div></div></div>
+            </div>
+        </div>
+
+        <!-- CONFIG -->
+        <div id="section-config" class="section">
+            <div class="card">
+                <div class="card-header"><span class="card-title">⚙️ Configuración</span></div>
+                <div class="telegram-config">
+                    <h3 style="margin-bottom: 14px; color: var(--primary); font-size: 1.1rem;">📱 Notificaciones Telegram</h3>
+                    <div class="form-group"><label class="form-label">Bot Token</label><input type="text" class="form-input" id="telegramToken" placeholder="123456789:ABC..."></div>
+                    <div class="form-group"><label class="form-label">Chat ID</label><input type="text" class="form-input" id="telegramChatId" placeholder="123456789"></div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-primary btn-small" style="flex: 1;" onclick="saveTelegramConfig()">💾 Guardar</button>
+                        <button class="btn btn-secondary btn-small" style="flex: 1;" onclick="testTelegram()">🧪 Probar</button>
+                    </div>
+                </div>
+                <div class="form-group"><label class="form-label">👤 Tu nombre (repartidor)</label><input type="text" class="form-input" id="repartidorName" placeholder="Ej: Juan Pérez"></div>
+                <button class="btn btn-primary" onclick="saveConfig()">💾 Guardar Config</button>
+                <hr style="margin: 24px 0; border: none; border-top: 2px solid #eee;">
+                <div style="background: #ffebee; border-radius: 12px; padding: 16px;">
+                    <div style="font-weight: 700; color: var(--danger); margin-bottom: 8px;">⚠️ Zona Peligrosa</div>
+                    <button class="btn btn-danger" onclick="resetData()">🗑️ Resetear Datos Locales</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item admin-only active" onclick="showSection('dashboard')"><span class="icon">🏠</span><span>Inicio</span></div>
+        <div class="nav-item admin-only" onclick="showSection('sucursales')"><span class="icon">🏪</span><span>Sucursales</span></div>
+        <div class="nav-item admin-only" onclick="showSection('orders')"><span class="icon">📋</span><span>Pedidos</span></div>
+        <div class="nav-item" onclick="showSection('deliveries')"><span class="icon">🚚</span><span>Entregas</span></div>
+        <div class="nav-item admin-only" onclick="showSection('insumos')"><span class="icon">🧴</span><span>Insumos</span></div>
+    </div>
+
+    <!-- MODALS -->
+    <div class="modal-overlay" id="newOrderModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">📋 Crear Nuevo Pedido</span><button class="modal-close" onclick="closeModal('newOrderModal')">&times;</button></div>
+            <div class="form-group"><label class="form-label">🏪 Sucursal *</label><select class="form-select" id="orderSucursal"><option value="">Seleccionar...</option></select></div>
+            <div class="form-group"><label class="form-label">👤 Repartidor</label><select class="form-select" id="orderRepartidor"><option value="">Sin asignar</option></select></div>
+            <div class="form-group"><label class="form-label">📅 Fecha</label><input type="date" class="form-input" id="orderDate"></div>
+            <div style="background: var(--light-gray); border-radius: 12px; padding: 16px; margin-bottom: 18px;">
+                <label class="form-label" style="margin-bottom: 12px;">📦 Seleccionar Productos</label>
+                <p style="font-size: 0.85rem; color: var(--gray); margin-bottom: 12px;">Tocá los productos para agregarlos</p>
+                <div class="product-grid" id="productGrid"></div>
+                <div id="selectedProductsList" style="margin-top: 14px;"></div>
+            </div>
+            <div style="background: #e8f5e9; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; display: none;" id="orderSummary">
+                <div style="font-weight: 700; color: var(--success); margin-bottom: 4px;">✅ Resumen</div>
+                <div id="orderSummaryContent" style="font-size: 0.9rem; color: #555;"></div>
+            </div>
+            <button class="btn btn-success" style="font-size: 1.1rem; padding: 16px;" onclick="saveOrder()">✅ CREAR PEDIDO</button>
+            <button class="btn btn-secondary" onclick="closeModal('newOrderModal')">Cancelar</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editSucursalModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">🏪 Editar Sucursal</span><button class="modal-close" onclick="closeModal('editSucursalModal')">&times;</button></div>
+            <input type="hidden" id="editSucursalId">
+            <div class="form-group"><label class="form-label">Nombre *</label><input type="text" class="form-input" id="editSucursalNombre"></div>
+            <div class="form-group"><label class="form-label">Dirección</label><input type="text" class="form-input" id="editSucursalDireccion"></div>
+            <div class="form-group"><label class="form-label">Teléfono</label><input type="text" class="form-input" id="editSucursalTelefono"></div>
+            <button class="btn btn-success" onclick="updateSucursal()">💾 Guardar</button>
+            <button class="btn btn-danger" onclick="deleteSucursal()">🗑️ Eliminar</button>
+            <button class="btn btn-secondary" onclick="closeModal('editSucursalModal')">Cancelar</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="newSucursalModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">🏪 Nueva Sucursal</span><button class="modal-close" onclick="closeModal('newSucursalModal')">&times;</button></div>
+            <div class="form-group"><label class="form-label">Nombre *</label><input type="text" class="form-input" id="newSucursalNombre" placeholder="Ej: Sucursal Centro"></div>
+            <div class="form-group"><label class="form-label">Dirección</label><input type="text" class="form-input" id="newSucursalDireccion" placeholder="Ej: Av. Central 123"></div>
+            <div class="form-group"><label class="form-label">Teléfono</label><input type="text" class="form-input" id="newSucursalTelefono" placeholder="Ej: 123456789"></div>
+            <button class="btn btn-success" onclick="createSucursal()">➕ Crear</button>
+            <button class="btn btn-secondary" onclick="closeModal('newSucursalModal')">Cancelar</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="deliveryModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title" id="deliveryModalTitle">✅ Confirmar Entrega</span><button class="modal-close" onclick="closeModal('deliveryModal')">&times;</button></div>
+            <div id="deliveryInfo" style="background: var(--light-gray); border-radius: 10px; padding: 14px; margin-bottom: 16px;"></div>
+            <div style="margin-bottom: 16px;">
+                <div style="font-weight: 700; color: var(--primary); margin-bottom: 10px; font-size: 1.05rem;">📋 Checklist</div>
+                <p style="font-size: 0.85rem; color: var(--gray); margin-bottom: 12px;">Desmarcá lo que NO se entregó</p>
+                <div id="deliveryChecklist"></div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">📸 Foto (opcional)</label>
+                <div class="photo-upload" onclick="document.getElementById('deliveryPhoto').click()">
+                    <div style="font-size: 2rem; margin-bottom: 8px;">📷</div>
+                    <div style="font-weight: 600; color: #666;">Tocá para foto</div>
+                    <input type="file" id="deliveryPhoto" accept="image/*" capture="environment" style="display:none" onchange="previewPhoto(this,'deliveryPhotoPreview')">
+                    <img id="deliveryPhotoPreview" class="photo-preview" style="display:none">
+                </div>
+            </div>
+            <div class="form-group"><label class="form-label">📝 Observaciones</label><textarea class="form-textarea" id="deliveryObservations" placeholder="Ej: Faltaron 2 cajas..."></textarea></div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn btn-success" style="flex: 1; min-width: 120px;" onclick="confirmDelivery()">✅ Completa</button>
+                <button class="btn btn-warning" style="flex: 1; min-width: 120px;" onclick="confirmPartialDelivery()">⚠️ Parcial</button>
+                <button class="btn btn-danger" style="flex: 1; min-width: 120px;" onclick="confirmFailedDelivery()">❌ Fallida</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="addStockModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">📦 Agregar Stock</span><button class="modal-close" onclick="closeModal('addStockModal')">&times;</button></div>
+            <div class="form-group"><label class="form-label">Producto *</label><select class="form-select" id="stockProductSelect"><option value="">Seleccionar...</option></select></div>
+            <div class="form-group"><label class="form-label">Cantidad *</label><input type="number" class="form-input" id="stockQtyAdd" min="1" value="1"></div>
+            <button class="btn btn-success" onclick="addStock()">➕ Agregar</button>
+            <button class="btn btn-secondary" onclick="closeModal('addStockModal')">Cancelar</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="orderDetailModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title" id="detailModalTitle">📋 Detalle</span><button class="modal-close" onclick="closeModal('orderDetailModal')">&times;</button></div>
+            <div id="orderDetailContent"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="repartidorPreviewModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">👁️ Vista del Repartidor</span><button class="modal-close" onclick="closeModal('repartidorPreviewModal')">&times;</button></div>
+            <div id="repartidorPreviewContent"></div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR PEDIDO -->
+    <div class="modal-overlay" id="editOrderModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">✏️ Editar Pedido</span><button class="modal-close" onclick="closeModal('editOrderModal')">&times;</button></div>
+            <input type="hidden" id="editOrderId">
+            <div class="form-group"><label class="form-label">🏪 Sucursal *</label><select class="form-select" id="editOrderSucursal"></select></div>
+            <div class="form-group"><label class="form-label">👤 Repartidor</label><select class="form-select" id="editOrderRepartidor"></select></div>
+            <div class="form-group"><label class="form-label">📅 Fecha</label><input type="date" class="form-input" id="editOrderDate"></div>
+            <div class="form-group"><label class="form-label">📊 Estado</label>
+                <select class="form-select" id="editOrderEstado">
+                    <option value="pendiente">⏳ Pendiente</option>
+                    <option value="en_ruta">🚚 En Ruta</option>
+                    <option value="entregado">✅ Entregado</option>
+                    <option value="parcial">⚠️ Parcial</option>
+                    <option value="fallido">❌ Fallido</option>
+                </select>
+            </div>
+            <div class="form-group"><label class="form-label">📝 Observaciones</label><textarea class="form-textarea" id="editOrderObs" style="min-height:70px;" placeholder="Notas..."></textarea></div>
+            <button class="btn btn-success" onclick="saveEditOrder()">💾 Guardar Cambios</button>
+            <button class="btn btn-secondary" onclick="closeModal('editOrderModal')">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- MODAL NUEVO INSUMO -->
+    <div class="modal-overlay" id="newInsumoModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">🧴 Nuevo Insumo</span><button class="modal-close" onclick="closeModal('newInsumoModal')">&times;</button></div>
+            <div class="form-group"><label class="form-label">Nombre *</label><input type="text" class="form-input" id="newInsumoNombre" placeholder="Ej: Bolsa papel kraft"></div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Categoría</label>
+                    <select class="form-select" id="newInsumoCategoria">
+                        <option value="Packaging">Packaging</option>
+                        <option value="Descartables">Descartables</option>
+                        <option value="Lácteos">Lácteos</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+                <div class="form-group"><label class="form-label">Unidad de medida</label>
+                    <select class="form-select" id="newInsumoUnidad">
+                        <option value="un">un (unidad)</option>
+                        <option value="kg">kg</option>
+                        <option value="lt">lt (litro)</option>
+                        <option value="caja">caja</option>
+                        <option value="docena">docena</option>
+                        <option value="bolsa">bolsa</option>
+                        <option value="rollo">rollo</option>
+                        <option value="pack">pack</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group"><label class="form-label">Descripción</label><input type="text" class="form-input" id="newInsumoDescripcion" placeholder="Ej: 30x40 cm, 50g"></div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Stock mínimo</label><input type="number" class="form-input" id="newInsumoStockMin" value="20" min="0"></div>
+                <div class="form-group"><label class="form-label">Precio unit. ($)</label><input type="number" class="form-input" id="newInsumoPrecio" min="0" step="0.01" placeholder="0.00"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Stock inicial</label><input type="number" class="form-input" id="newInsumoStockInicial" value="0" min="0"></div>
+            <button class="btn btn-success" onclick="createInsumo()">➕ Crear Insumo</button>
+            <button class="btn btn-secondary" onclick="closeModal('newInsumoModal')">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR INSUMO -->
+    <div class="modal-overlay" id="editInsumoModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">✏️ Editar Insumo</span><button class="modal-close" onclick="closeModal('editInsumoModal')">&times;</button></div>
+            <input type="hidden" id="editInsumoId">
+            <div class="form-group"><label class="form-label">Nombre *</label><input type="text" class="form-input" id="editInsumoNombre"></div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Categoría</label>
+                    <select class="form-select" id="editInsumoCategoria">
+                        <option value="Packaging">Packaging</option>
+                        <option value="Descartables">Descartables</option>
+                        <option value="Lácteos">Lácteos</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+                <div class="form-group"><label class="form-label">Unidad de medida</label>
+                    <select class="form-select" id="editInsumoUnidad">
+                        <option value="un">un (unidad)</option>
+                        <option value="kg">kg</option>
+                        <option value="lt">lt (litro)</option>
+                        <option value="caja">caja</option>
+                        <option value="docena">docena</option>
+                        <option value="bolsa">bolsa</option>
+                        <option value="rollo">rollo</option>
+                        <option value="pack">pack</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group"><label class="form-label">Descripción</label><input type="text" class="form-input" id="editInsumoDescripcion"></div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Stock mínimo</label><input type="number" class="form-input" id="editInsumoStockMin" min="0"></div>
+                <div class="form-group"><label class="form-label">Precio unit. ($)</label><input type="number" class="form-input" id="editInsumoPrecio" min="0" step="0.01"></div>
+            </div>
+            <div class="form-group"><label class="form-label">📦 Stock actual</label><input type="number" class="form-input" id="editInsumoStock" min="0"></div>
+            <button class="btn btn-success" onclick="updateInsumo()">💾 Guardar</button>
+            <button class="btn btn-danger" onclick="deleteInsumo()">🗑️ Eliminar</button>
+            <button class="btn btn-secondary" onclick="closeModal('editInsumoModal')">Cancelar</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+<script>
+// ==================== SUPABASE CONFIG ====================
+const SUPABASE_URL = 'https://oiddmrpbqaukzkjgtfpm.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pZGRtcnBicWF1a3pramd0ZnBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MTU0MjQsImV4cCI6MjA5MzQ5MTQyNH0.PnHHiJaC2HuY8wKGhWsdqnNlS9ILmyP2xS_ZU-cn4s0';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ==================== STATE ====================
+let DB = {
+    sucursales: [],
+    repartidores: [],
+    productos: [],
+    stock: [],
+    pedidos: [],
+    config: { telegramToken: '', telegramChatId: '', repartidorName: '' }
+};
+
+// ==================== ROLES ====================
+const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+
+function applyRoleUI() {
+    const badge = document.getElementById('roleBadge');
+    if (isAdmin) {
+        document.body.classList.add('is-admin');
+        badge.textContent = '🔐 Admin';
+        badge.className = 'role-badge badge-admin';
+    } else {
+        badge.textContent = '🚚 Repartidor';
+        badge.className = 'role-badge badge-rep';
+        showSection('deliveries');
+    }
+}
+
+let currentDeliveryOrder = null;
+let deliveryChecklistState = {};
+let selectedProductsForOrder = {};
+let editingSucursalId = null;
+let isOnline = navigator.onLine;
+let syncChannel = null;
+
+// ==================== INIT ====================
+async function init() {
+    setupDateInputs();
+    setupOfflineDetection();
+    setupModalClose();
+
+    showSyncStatus('syncing');
+
+    // Load from local first (fast), then sync with Supabase
+    loadLocalData();
+    renderAll();
+    applyRoleUI();
+
+    // Then sync with Supabase
+    await syncWithSupabase();
+
+    // Setup realtime subscriptions
+    setupRealtime();
+
+    // Check online status
+    updateOnlineStatus();
+}
+
+function setupDateInputs() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('orderDate').value = today;
+}
+
+function setupOfflineDetection() {
+    window.addEventListener('online', () => {
+        isOnline = true;
+        document.getElementById('offlineBanner').classList.remove('active');
+        showSyncStatus('syncing');
+        showToast('🌐 Conectado. Sincronizando...');
+        syncWithSupabase();
+    });
+    window.addEventListener('offline', () => {
+        isOnline = false;
+        document.getElementById('offlineBanner').classList.add('active');
+        showSyncStatus('offline');
+        showToast('⚠️ Sin conexión. Modo offline.');
+    });
+    if (!navigator.onLine) {
+        document.getElementById('offlineBanner').classList.add('active');
+        showSyncStatus('offline');
+    }
+}
+
+function updateOnlineStatus() {
+    if (navigator.onLine) {
+        showSyncStatus('online');
+        setTimeout(() => document.getElementById('syncStatus').classList.remove('online'), 2000);
+    }
+}
+
+function showSyncStatus(status) {
+    const el = document.getElementById('syncStatus');
+    el.className = 'sync-status ' + status;
+    if (status === 'online') el.textContent = '✅ Online';
+    else if (status === 'offline') el.textContent = '⚠️ Offline';
+    else if (status === 'syncing') el.textContent = '🔄 Sincronizando...';
+}
+
+function setupModalClose() {
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', e => {
+            if (e.target === overlay) overlay.classList.remove('active');
+        });
+    });
+}
+
+// ==================== LOCAL STORAGE (Offline Support) ====================
+function saveLocalData() {
+    localStorage.setItem('logisticaLocalDB', JSON.stringify(DB));
+    localStorage.setItem('logisticaConfig', JSON.stringify(DB.config));
+}
+
+function loadLocalData() {
+    const saved = localStorage.getItem('logisticaLocalDB');
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        Object.assign(DB, parsed);
+    }
+    const savedConfig = localStorage.getItem('logisticaConfig');
+    if (savedConfig) {
+        DB.config = JSON.parse(savedConfig);
+    }
+    // Update UI
+    document.getElementById('telegramToken').value = DB.config.telegramToken || '';
+    document.getElementById('telegramChatId').value = DB.config.telegramChatId || '';
+    document.getElementById('repartidorName').value = DB.config.repartidorName || '';
+}
+
+// ==================== SUPABASE SYNC ====================
+async function syncWithSupabase() {
+    if (!navigator.onLine) return;
+
+    try {
+        // Load all data from Supabase
+        const [sucursalesRes, repartidoresRes, productosRes, stockRes, pedidosRes, configRes] = await Promise.all([
+            supabase.from('sucursales').select('*').order('id'),
+            supabase.from('repartidores').select('*').order('id'),
+            supabase.from('productos').select('*').order('id'),
+            supabase.from('stock').select('*').order('id'),
+            supabase.from('pedidos').select('*').order('creado', { ascending: false }),
+            supabase.from('config').select('*').eq('id', 1).single()
+        ]);
+
+        if (sucursalesRes.data) DB.sucursales = sucursalesRes.data;
+        if (repartidoresRes.data) DB.repartidores = repartidoresRes.data;
+        if (productosRes.data) DB.productos = productosRes.data;
+        if (stockRes.data) DB.stock = stockRes.data;
+        if (pedidosRes.data) DB.pedidos = pedidosRes.data.map(p => ({
+            ...p,
+            items: typeof p.items === 'string' ? JSON.parse(p.items) : p.items,
+            checklist: typeof p.checklist === 'string' ? JSON.parse(p.checklist) : (p.checklist || {})
+        }));
+        if (configRes.data) {
+            DB.config.telegramToken = configRes.data.telegram_token || '';
+            DB.config.telegramChatId = configRes.data.telegram_chat_id || '';
+        }
+
+        saveLocalData();
+        renderAll();
+        showSyncStatus('online');
+        setTimeout(() => document.getElementById('syncStatus').classList.remove('online'), 2000);
+
+    } catch (e) {
+        console.error('Sync error:', e);
+        showToast('⚠️ Error de sincronización. Usando datos locales.');
+    }
+}
+
+// ==================== REALTIME SUBSCRIPTIONS ====================
+function setupRealtime() {
+    // Subscribe to pedidos changes
+    syncChannel = supabase.channel('logistica-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, payload => {
+            handleRealtimeChange('pedidos', payload);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, payload => {
+            handleRealtimeChange('stock', payload);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sucursales' }, payload => {
+            handleRealtimeChange('sucursales', payload);
+        })
+        .subscribe();
+}
+
+function handleRealtimeChange(table, payload) {
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+
+    if (table === 'pedidos') {
+        if (eventType === 'INSERT') {
+            const pedido = {
+                ...newRecord,
+                items: typeof newRecord.items === 'string' ? JSON.parse(newRecord.items) : newRecord.items,
+                checklist: typeof newRecord.checklist === 'string' ? JSON.parse(newRecord.checklist) : (newRecord.checklist || {})
+            };
+            DB.pedidos.unshift(pedido);
+        } else if (eventType === 'UPDATE') {
+            const idx = DB.pedidos.findIndex(p => p.id === newRecord.id);
+            if (idx >= 0) {
+                DB.pedidos[idx] = {
+                    ...newRecord,
+                    items: typeof newRecord.items === 'string' ? JSON.parse(newRecord.items) : newRecord.items,
+                    checklist: typeof newRecord.checklist === 'string' ? JSON.parse(newRecord.checklist) : (newRecord.checklist || {})
+                };
+            }
+        } else if (eventType === 'DELETE') {
+            DB.pedidos = DB.pedidos.filter(p => p.id !== oldRecord.id);
+        }
+        renderOrders();
+        renderAllOrders();
+        renderMyDeliveries();
+        updateStats();
+    } else if (table === 'stock') {
+        if (eventType === 'UPDATE') {
+            const idx = DB.stock.findIndex(s => s.id === newRecord.id);
+            if (idx >= 0) DB.stock[idx] = newRecord;
+        }
+        renderStock();
+        renderStockPreview();
+        renderProductGrid();
+        populateSelects();
+    } else if (table === 'sucursales') {
+        if (eventType === 'INSERT') {
+            DB.sucursales.push(newRecord);
+        } else if (eventType === 'UPDATE') {
+            const idx = DB.sucursales.findIndex(s => s.id === newRecord.id);
+            if (idx >= 0) DB.sucursales[idx] = newRecord;
+        } else if (eventType === 'DELETE') {
+            DB.sucursales = DB.sucursales.filter(s => s.id !== oldRecord.id);
+        }
+        renderSucursales();
+        populateSelects();
+    }
+
+    saveLocalData();
+    showSyncStatus('online');
+    setTimeout(() => document.getElementById('syncStatus').classList.remove('online'), 1500);
+}
+
+// ==================== RENDER ALL ====================
+function renderAll() {
+    updateStats();
+    renderOrders();
+    renderStockPreview();
+    renderSucursales();
+    renderStock();
+    renderMyDeliveries();
+    populateSelects();
+    renderProductGrid();
+    renderInsumos();
+}
+
+// ==================== NAVIGATION ====================
+function showSection(sectionName) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+    const targetSection = document.getElementById('section-' + sectionName);
+    if (targetSection) targetSection.classList.add('active');
+
+    const navItems = document.querySelectorAll('.nav-item');
+    const sectionMap = ['dashboard', 'sucursales', 'orders', 'deliveries', 'insumos'];
+    const idx = sectionMap.indexOf(sectionName);
+    if (idx >= 0 && navItems[idx]) navItems[idx].classList.add('active');
+
+    if (sectionName === 'dashboard') { updateStats(); renderOrders(); renderStockPreview(); }
+    else if (sectionName === 'sucursales') renderSucursales();
+    else if (sectionName === 'orders') renderAllOrders();
+    else if (sectionName === 'stock') renderStock();
+    else if (sectionName === 'deliveries') renderMyDeliveries();
+    else if (sectionName === 'reports') showReport('daily');
+    else if (sectionName === 'insumos') renderInsumos();
+}
+
+// ==================== STATS ====================
+function updateStats() {
+    const today = new Date().toISOString().split('T')[0];
+    const todayOrders = DB.pedidos.filter(p => p.fecha === today);
+    document.getElementById('statPending').textContent = todayOrders.filter(p => p.estado === 'pendiente').length;
+    document.getElementById('statRoute').textContent = todayOrders.filter(p => p.estado === 'en_ruta').length;
+    document.getElementById('statDelivered').textContent = todayOrders.filter(p => p.estado === 'entregado').length;
+    document.getElementById('statFailed').textContent = todayOrders.filter(p => p.estado === 'fallido').length;
+    document.getElementById('todayCount').textContent = todayOrders.length + ' pedidos hoy';
+}
+
+// ==================== SUCURSALES ====================
+function renderSucursales() {
+    const container = document.getElementById('sucursalesList');
+    if (DB.sucursales.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏪</div><div>No hay sucursales</div></div>';
+        return;
+    }
+    container.innerHTML = DB.sucursales.map(s => `
+        <div class="sucursal-card" onclick="editSucursal(${s.id})">
+            <div class="sucursal-card-title">🏪 ${s.nombre}</div>
+            <div class="sucursal-card-info">📍 ${s.direccion || 'Sin dirección'}<br>📞 ${s.telefono || 'Sin teléfono'}</div>
+            <span style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">✏️ Tocá para editar</span>
+        </div>
+    `).join('');
+}
+
+function filterSucursales() {
+    const search = document.getElementById('searchSucursales').value.toLowerCase();
+    document.querySelectorAll('#sucursalesList .sucursal-card').forEach(item => {
+        item.style.display = item.textContent.toLowerCase().includes(search) ? 'block' : 'none';
+    });
+}
+
+async function createSucursal() {
+    const nombre = document.getElementById('newSucursalNombre').value.trim();
+    const direccion = document.getElementById('newSucursalDireccion').value.trim();
+    const telefono = document.getElementById('newSucursalTelefono').value.trim();
+    if (!nombre) { showToast('❌ El nombre es obligatorio'); return; }
+
+    const { data, error } = await supabase.from('sucursales').insert([{ nombre, direccion, telefono }]).select().single();
+    if (error) { showToast('❌ Error: ' + error.message); return; }
+
+    DB.sucursales.push(data);
+    saveLocalData();
+
+    document.getElementById('newSucursalNombre').value = '';
+    document.getElementById('newSucursalDireccion').value = '';
+    document.getElementById('newSucursalTelefono').value = '';
+    closeModal('newSucursalModal');
+    showToast('✅ Sucursal creada');
+    renderSucursales();
+    populateSelects();
+}
+
+function editSucursal(id) {
+    const sucursal = DB.sucursales.find(s => s.id === id);
+    if (!sucursal) return;
+    editingSucursalId = id;
+    document.getElementById('editSucursalId').value = id;
+    document.getElementById('editSucursalNombre').value = sucursal.nombre;
+    document.getElementById('editSucursalDireccion').value = sucursal.direccion || '';
+    document.getElementById('editSucursalTelefono').value = sucursal.telefono || '';
+    showModal('editSucursalModal');
+}
+
+async function updateSucursal() {
+    const id = parseInt(document.getElementById('editSucursalId').value);
+    const nombre = document.getElementById('editSucursalNombre').value.trim();
+    const direccion = document.getElementById('editSucursalDireccion').value.trim();
+    const telefono = document.getElementById('editSucursalTelefono').value.trim();
+    if (!nombre) { showToast('❌ El nombre es obligatorio'); return; }
+
+    const { error } = await supabase.from('sucursales').update({ nombre, direccion, telefono }).eq('id', id);
+    if (error) { showToast('❌ Error: ' + error.message); return; }
+
+    const sucursal = DB.sucursales.find(s => s.id === id);
+    if (sucursal) { sucursal.nombre = nombre; sucursal.direccion = direccion; sucursal.telefono = telefono; }
+    saveLocalData();
+    showToast('✅ Sucursal actualizada');
+    closeModal('editSucursalModal');
+    renderSucursales();
+    populateSelects();
+}
+
+async function deleteSucursal() {
+    const id = parseInt(document.getElementById('editSucursalId').value);
+    const sucursal = DB.sucursales.find(s => s.id === id);
+    if (!sucursal) return;
+    if (!confirm('¿Eliminar "' + sucursal.nombre + '"?')) return;
+
+    const { error } = await supabase.from('sucursales').delete().eq('id', id);
+    if (error) { showToast('❌ Error: ' + error.message); return; }
+
+    DB.sucursales = DB.sucursales.filter(s => s.id !== id);
+    saveLocalData();
+    showToast('🗑️ Sucursal eliminada');
+    closeModal('editSucursalModal');
+    renderSucursales();
+    populateSelects();
+}
+
+// ==================== ORDERS ====================
+function renderOrders() {
+    const today = new Date().toISOString().split('T')[0];
+    const todayOrders = DB.pedidos.filter(p => p.fecha === today).sort((a, b) => new Date(b.creado) - new Date(a.creado));
+    const container = document.getElementById('ordersList');
+    if (todayOrders.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div style="font-weight: 600;">Sin pedidos para hoy</div><div style="font-size: 0.85rem;">Tocá "Nuevo Pedido" para comenzar</div></div>';
+        return;
+    }
+    container.innerHTML = todayOrders.map(order => renderOrderCard(order)).join('');
+}
+
+function renderOrderCard(order) {
+    const sucursal = DB.sucursales.find(s => s.id === order.sucursalId || s.id === order.sucursal_id);
+    const repartidor = DB.repartidores.find(r => r.id === order.repartidorId || r.id === order.repartidor_id);
+    const estadoClasses = { 'pendiente': 'pending', 'en_ruta': 'route', 'entregado': 'delivered', 'fallido': 'failed', 'parcial': 'partial' };
+    const badgeClasses = { 'pendiente': 'badge-pending', 'en_ruta': 'badge-route', 'entregado': 'badge-delivered', 'fallido': 'badge-failed', 'parcial': 'badge-partial' };
+    const estadoLabels = { 'pendiente': 'Pendiente', 'en_ruta': 'En Ruta', 'entregado': 'Entregado', 'fallido': 'Fallido', 'parcial': 'Parcial' };
+    const estadoEmojis = { 'pendiente': '⏳', 'en_ruta': '🚚', 'entregado': '✅', 'fallido': '❌', 'parcial': '⚠️' };
+
+    const items = order.items || [];
+    const productosPreview = items.slice(0, 2).map(item => {
+        const prod = DB.productos.find(p => p.id === item.productoId || p.id === item.producto_id);
+        return `${prod?.nombre || 'Producto'} x${item.cantidad}`;
+    }).join(', ') + (items.length > 2 ? ` +${items.length - 2} más` : '');
+
+    const creado = order.creado || order.created_at || new Date().toISOString();
+
+    return `
+        <div class="list-item ${estadoClasses[order.estado]}" onclick="showOrderDetail(${order.id})">
+            <div class="list-item-info">
+                <div class="list-item-title">${estadoEmojis[order.estado]} ${sucursal?.nombre || 'Sucursal'}</div>
+                <div class="list-item-sub">👤 ${repartidor?.nombre || 'Sin asignar'} • 🕐 ${new Date(creado).toLocaleTimeString('es-AR', {hour: '2-digit', minute: '2-digit'})}</div>
+                <div class="list-item-products">📦 ${productosPreview}</div>
+            </div>
+            <div class="list-item-action">
+                <span class="badge ${badgeClasses[order.estado]}">${estadoLabels[order.estado]}</span>
+                ${order.estado === 'pendiente' ? `<button class="btn btn-tiny btn-primary" style="margin-top: 6px;" onclick="event.stopPropagation(); startRoute(${order.id})">🚀 Ruta</button>` : ''}
+                ${order.estado === 'en_ruta' ? `<button class="btn btn-tiny btn-success" style="margin-top: 6px;" onclick="event.stopPropagation(); startDelivery(${order.id})">✅ Entregar</button>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function renderAllOrders() {
+    const container = document.getElementById('allOrdersList');
+    if (DB.pedidos.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><div>Sin pedidos registrados</div></div>';
+        return;
+    }
+    const sorted = [...DB.pedidos].sort((a, b) => new Date(b.creado || b.created_at || 0) - new Date(a.creado || a.created_at || 0));
+    container.innerHTML = sorted.map(order => renderOrderCard(order)).join('');
+}
+
+function filterOrders() {
+    const search = document.getElementById('searchOrders').value.toLowerCase();
+    document.querySelectorAll('#ordersList .list-item').forEach(item => {
+        item.style.display = item.textContent.toLowerCase().includes(search) ? 'flex' : 'none';
+    });
+}
+function filterAllOrders() {
+    const search = document.getElementById('searchAllOrders').value.toLowerCase();
+    document.querySelectorAll('#allOrdersList .list-item').forEach(item => {
+        item.style.display = item.textContent.toLowerCase().includes(search) ? 'flex' : 'none';
+    });
+}
+
+// ==================== NEW ORDER ====================
+function populateSelects() {
+    document.getElementById('orderSucursal').innerHTML = '<option value="">Seleccionar...</option>' + 
+        DB.sucursales.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
+    document.getElementById('orderRepartidor').innerHTML = '<option value="">Sin asignar</option>' + 
+        DB.repartidores.map(r => `<option value="${r.id}">${r.nombre}</option>`).join('');
+    document.getElementById('stockProductSelect').innerHTML = '<option value="">Seleccionar...</option>' + 
+        DB.productos.map(p => {
+            const stock = DB.stock.find(s => s.producto_id === p.id || s.productoId === p.id);
+            return `<option value="${p.id}">${p.nombre} (${stock?.cantidad || 0} disp.)</option>`;
+        }).join('');
+}
+
+function renderProductGrid() {
+    const grid = document.getElementById('productGrid');
+    if (!grid) return;
+    grid.innerHTML = DB.productos.map(p => {
+        const stock = DB.stock.find(s => s.producto_id === p.id || s.productoId === p.id);
+        const cantidad = stock?.cantidad || 0;
+        const selected = selectedProductsForOrder[p.id] || 0;
+        const tagClass = p.categoria === 'Packaging' ? 'tag-packaging' : p.categoria === 'Descartables' ? 'tag-descartables' : 'tag-lacteos';
+        return `
+            <div class="product-chip ${selected > 0 ? 'selected' : ''}" id="productChip_${p.id}" onclick="toggleProductSelection(${p.id})">
+                ${selected > 0 ? `<div class="qty-badge">${selected}</div>` : ''}
+                <div class="name">${p.nombre}</div>
+                <div class="stock"><span class="tag ${tagClass}">${p.categoria}</span><br>${cantidad} disp.</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleProductSelection(productId) {
+    const stock = DB.stock.find(s => s.producto_id === productId || s.productoId === productId);
+    const disponible = stock?.cantidad || 0;
+    const actual = selectedProductsForOrder[productId] || 0;
+    if (actual === 0) {
+        if (disponible < 1) { showToast('❌ Sin stock'); return; }
+        selectedProductsForOrder[productId] = 1;
+    } else {
+        if (actual >= disponible) { selectedProductsForOrder[productId] = 0; }
+        else { selectedProductsForOrder[productId] = actual + 1; }
+    }
+    renderProductGrid();
+    renderSelectedProductsList();
+    updateOrderSummary();
+}
+
+function renderSelectedProductsList() {
+    const container = document.getElementById('selectedProductsList');
+    const selected = Object.entries(selectedProductsForOrder).filter(([k, v]) => v > 0);
+    if (selected.length === 0) { container.innerHTML = ''; return; }
+    container.innerHTML = `
+        <div style="font-weight: 700; color: var(--primary); margin-bottom: 10px;">📦 Seleccionados:</div>
+        ${selected.map(([pid, qty]) => {
+            const prod = DB.productos.find(p => p.id == pid);
+            return `
+                <div style="display: flex; align-items: center; gap: 12px; padding: 10px; background: #fafafa; border-radius: 8px; margin-bottom: 8px;">
+                    <div style="flex: 2; font-weight: 600;">${prod?.nombre}</div>
+                    <div style="display: flex; align-items: center; background: white; border: 2px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                        <button style="border: none; background: var(--light-gray); padding: 6px 12px; font-size: 1rem; cursor: pointer;" onclick="event.stopPropagation(); changeProductQty(${pid}, -1)">−</button>
+                        <input type="text" value="${qty}" readonly style="border: none; width: 40px; text-align: center; font-weight: 700;">
+                        <button style="border: none; background: var(--light-gray); padding: 6px 12px; font-size: 1rem; cursor: pointer;" onclick="event.stopPropagation(); changeProductQty(${pid}, 1)">+</button>
+                    </div>
+                    <button style="border: none; background: var(--danger); color: white; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;" onclick="event.stopPropagation(); removeProduct(${pid})">🗑️</button>
+                </div>
+            `;
+        }).join('')}
+    `;
+}
+
+function changeProductQty(productId, delta) {
+    const stock = DB.stock.find(s => s.producto_id === productId || s.productoId === productId);
+    const disponible = stock?.cantidad || 0;
+    const actual = selectedProductsForOrder[productId] || 0;
+    const nuevo = actual + delta;
+    if (nuevo < 0) return;
+    if (nuevo > disponible) { showToast('❌ Stock insuficiente'); return; }
+    selectedProductsForOrder[productId] = nuevo;
+    if (nuevo === 0) delete selectedProductsForOrder[productId];
+    renderProductGrid();
+    renderSelectedProductsList();
+    updateOrderSummary();
+}
+
+function removeProduct(productId) {
+    delete selectedProductsForOrder[productId];
+    renderProductGrid();
+    renderSelectedProductsList();
+    updateOrderSummary();
+}
+
+function updateOrderSummary() {
+    const selected = Object.entries(selectedProductsForOrder).filter(([k, v]) => v > 0);
+    const summaryDiv = document.getElementById('orderSummary');
+    const summaryContent = document.getElementById('orderSummaryContent');
+    if (selected.length === 0) { summaryDiv.style.display = 'none'; return; }
+    const totalItems = selected.reduce((sum, [pid, qty]) => sum + qty, 0);
+    summaryDiv.style.display = 'block';
+    summaryContent.innerHTML = `${selected.length} productos • ${totalItems} unidades totales`;
+}
+
+async function saveOrder() {
+    const sucursalId = parseInt(document.getElementById('orderSucursal').value);
+    const repartidorId = document.getElementById('orderRepartidor').value;
+    const fecha = document.getElementById('orderDate').value;
+    if (!sucursalId || !fecha) { showToast('❌ Seleccioná sucursal y fecha'); return; }
+
+    const items = Object.entries(selectedProductsForOrder).filter(([k, v]) => v > 0).map(([pid, qty]) => ({ productoId: parseInt(pid), cantidad: qty }));
+    if (items.length === 0) { showToast('❌ Seleccioná al menos un producto'); return; }
+
+    for (const item of items) {
+        const stockItem = DB.stock.find(s => s.producto_id === item.productoId || s.productoId === item.productoId);
+        if (!stockItem || stockItem.cantidad < item.cantidad) {
+            const prod = DB.productos.find(p => p.id === item.productoId);
+            showToast(`❌ Sin stock: ${prod?.nombre}`); return;
+        }
+    }
+
+    const orderData = {
+        sucursal_id: sucursalId,
+        repartidor_id: repartidorId ? parseInt(repartidorId) : null,
+        fecha,
+        estado: 'pendiente',
+        items: JSON.stringify(items),
+        observaciones: '',
+        foto_url: null,
+        checklist: '{}'
+    };
+
+    showSyncStatus('syncing');
+    const { data, error } = await supabase.from('pedidos').insert([orderData]).select().single();
+    if (error) { showToast('❌ Error: ' + error.message); showSyncStatus('offline'); return; }
+
+    const newOrder = { ...data, items, checklist: {} };
+    DB.pedidos.unshift(newOrder);
+    saveLocalData();
+
+    document.getElementById('orderSucursal').value = '';
+    document.getElementById('orderRepartidor').value = '';
+    selectedProductsForOrder = {};
+    renderProductGrid();
+    renderSelectedProductsList();
+    document.getElementById('orderSummary').style.display = 'none';
+
+    closeModal('newOrderModal');
+    showToast('✅ Pedido creado');
+    updateStats();
+    renderOrders();
+    renderAllOrders();
+    showSyncStatus('online');
+}
+
+// ==================== ORDER DETAIL ====================
+function showOrderDetail(orderId) {
+    const order = DB.pedidos.find(p => p.id === orderId);
+    if (!order) return;
+
+    const sucursal = DB.sucursales.find(s => s.id === order.sucursalId || s.id === order.sucursal_id);
+    const repartidor = DB.repartidores.find(r => r.id === order.repartidorId || r.id === order.repartidor_id);
+
+    const estadoColors = { 'pendiente': 'var(--warning)', 'en_ruta': 'var(--primary)', 'entregado': 'var(--success)', 'fallido': 'var(--danger)', 'parcial': '#f57f17' };
+    const estadoLabels = { 'pendiente': '⏳ Pendiente', 'en_ruta': '🚚 En Ruta', 'entregado': '✅ Entregado', 'fallido': '❌ Fallido', 'parcial': '⚠️ Parcial' };
+
+    const timelineSteps = ['pendiente', 'en_ruta', 'entregado'];
+    const currentStep = timelineSteps.indexOf(order.estado === 'parcial' ? 'entregado' : order.estado);
+
+    let content = `
+        <div style="margin-bottom: 20px;">
+            <div style="font-size: 1.3rem; font-weight: 700; color: var(--primary); margin-bottom: 6px;">🏪 ${sucursal?.nombre || 'Sucursal'}</div>
+            <div style="color: var(--gray); font-size: 0.95rem;">📍 ${sucursal?.direccion || ''} • 📞 ${sucursal?.telefono || ''}</div>
+        </div>
+        <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div style="background: ${estadoColors[order.estado]}15; padding: 12px 18px; border-radius: 10px; border: 2px solid ${estadoColors[order.estado]}30;">
+                <div style="font-size: 0.8rem; color: var(--gray); font-weight: 600;">ESTADO</div>
+                <div style="font-weight: 700; color: ${estadoColors[order.estado]}; font-size: 1.1rem;">${estadoLabels[order.estado]}</div>
+            </div>
+            <div style="background: var(--light-gray); padding: 12px 18px; border-radius: 10px;">
+                <div style="font-size: 0.8rem; color: var(--gray); font-weight: 600;">FECHA</div>
+                <div style="font-weight: 700;">${order.fecha}</div>
+            </div>
+            <div style="background: var(--light-gray); padding: 12px 18px; border-radius: 10px;">
+                <div style="font-size: 0.8rem; color: var(--gray); font-weight: 600;">REPARTIDOR</div>
+                <div style="font-weight: 700;">${repartidor?.nombre || 'Sin asignar'}</div>
+            </div>
+        </div>
+    `;
+
+    if (order.estado !== 'fallido') {
+        content += `
+            <div class="status-timeline">
+                <div class="status-step ${currentStep >= 0 ? 'completed' : ''} ${currentStep === 0 ? 'active' : ''}"><div style="font-size: 1.4rem; margin-bottom: 4px;">📋</div><div>Pendiente</div></div>
+                <div class="status-step ${currentStep >= 1 ? 'completed' : ''} ${currentStep === 1 ? 'active' : ''}"><div style="font-size: 1.4rem; margin-bottom: 4px;">🚚</div><div>En Ruta</div></div>
+                <div class="status-step ${currentStep >= 2 ? 'completed' : ''} ${currentStep === 2 ? 'active' : ''}"><div style="font-size: 1.4rem; margin-bottom: 4px;">✅</div><div>Entregado</div></div>
+            </div>
+        `;
+    }
+
+    const items = order.items || [];
+    content += `<div style="margin-bottom: 20px;"><div style="font-weight: 700; color: var(--primary); margin-bottom: 12px; font-size: 1.1rem;">📦 Productos:</div>`;
+    items.forEach(item => {
+        const prod = DB.productos.find(p => p.id === item.productoId || p.id === item.producto_id);
+        const check = order.checklist?.[item.productoId || item.producto_id];
+        const isDelivered = check?.entregado;
+        const icon = check ? (isDelivered ? '✅' : '❌') : '⏳';
+        const bg = check ? (isDelivered ? '#e8f5e9' : '#ffebee') : '#fafafa';
+        const obs = check?.observacion ? `<div style="color: var(--danger); font-size: 0.85rem; margin-top: 4px; font-weight: 500;">📝 ${check.observacion}</div>` : '';
+        content += `<div style="padding: 12px; background: ${bg}; border-radius: 10px; margin-bottom: 8px; border-left: 4px solid ${isDelivered ? 'var(--success)' : check ? 'var(--danger)' : '#e0e0e0'};"><div style="display: flex; justify-content: space-between; align-items: center;"><div><span style="font-size: 1.2rem; margin-right: 8px;">${icon}</span><strong style="font-size: 1.05rem;">${prod?.nombre}</strong></div><span style="font-weight: 700; color: var(--primary); font-size: 1.1rem;">x${item.cantidad}</span></div>${obs}</div>`;
+    });
+    content += `</div>`;
+
+    if (order.entregado) {
+        content += `<div style="background: var(--light-gray); padding: 14px; border-radius: 10px; margin-bottom: 16px;"><div style="font-weight: 700; color: var(--primary); margin-bottom: 6px;">🕐 Entrega realizada</div><div style="color: #555; font-size: 0.95rem;">${new Date(order.entregado).toLocaleString('es-AR')}</div></div>`;
+    }
+    if (order.observaciones) {
+        content += `<div style="background: #fff8e1; border: 2px solid #ffe082; padding: 14px; border-radius: 10px; margin-bottom: 16px;"><div style="font-weight: 700; color: #f57f17; margin-bottom: 6px;">📝 Observaciones:</div><div style="color: #555; font-size: 0.95rem; line-height: 1.5;">${order.observaciones}</div></div>`;
+    }
+    if (order.foto_url || order.foto) {
+        const foto = order.foto_url || order.foto;
+        content += `<div style="margin-bottom: 20px;"><div style="font-weight: 700; color: var(--primary); margin-bottom: 10px;">📸 Foto:</div><img src="${foto}" style="max-width: 100%; border-radius: 12px; box-shadow: var(--shadow);" onclick="window.open(this.src)"></div>`;
+    }
+
+    content += `<div style="display: flex; gap: 10px; flex-wrap: wrap;">`;
+    if (order.estado === 'pendiente') {
+        content += `<button class="btn btn-primary" style="flex: 1; min-width: 140px;" onclick="assignRepartidorFromDetail(${order.id})">👤 Asignar Repartidor</button><button class="btn btn-success" style="flex: 1; min-width: 140px;" onclick="closeModal('orderDetailModal'); startDelivery(${order.id});">✅ Confirmar Entrega</button>`;
+    } else if (order.estado === 'en_ruta') {
+        content += `<button class="btn btn-success" style="flex: 1; min-width: 140px;" onclick="closeModal('orderDetailModal'); startDelivery(${order.id});">✅ Confirmar Entrega</button><button class="btn btn-secondary" style="flex: 1; min-width: 140px;" onclick="revertToPending(${order.id})">↩️ Volver a Pendiente</button>`;
+    }
+    if (order.repartidorId || order.repartidor_id) {
+        content += `<button class="btn btn-outline" style="flex: 1; min-width: 140px;" onclick="showRepartidorPreview(${order.id})">👁️ Ver vista repartidor</button>`;
+    }
+    if (isAdmin) {
+        content += `<button class="btn btn-warning" style="flex: 1; min-width: 120px; background:#fff8e1; color:#e65100; border:2px solid #ffcc80;" onclick="openEditOrder(${order.id})">✏️ Editar</button>`;
+        content += `<button class="btn btn-danger" style="flex: 1; min-width: 120px;" onclick="deleteOrder(${order.id})">🗑️ Eliminar</button>`;
+    }
+    content += `</div>`;
+
+    document.getElementById('orderDetailContent').innerHTML = content;
+    document.getElementById('detailModalTitle').textContent = '📋 Pedido #' + order.id.toString().slice(-4);
+    showModal('orderDetailModal');
+}
+
+function assignRepartidorFromDetail(orderId) {
+    const repId = prompt('ID del repartidor:\n' + DB.repartidores.map(r => `${r.id} - ${r.nombre}`).join('\n'));
+    if (repId) updateOrderRepartidor(orderId, parseInt(repId));
+}
+
+async function updateOrderRepartidor(orderId, repId) {
+    const { error } = await supabase.from('pedidos').update({ repartidor_id: repId }).eq('id', orderId);
+    if (error) { showToast('❌ Error: ' + error.message); return; }
+    const order = DB.pedidos.find(p => p.id === orderId);
+    if (order) { order.repartidorId = repId; order.repartidor_id = repId; }
+    saveLocalData();
+    showToast('✅ Repartidor asignado');
+    showOrderDetail(orderId);
+    updateStats();
+    renderOrders();
+}
+
+async function revertToPending(orderId) {
+    if (!confirm('¿Volver este pedido a Pendiente?')) return;
+    const { error } = await supabase.from('pedidos').update({ estado: 'pendiente' }).eq('id', orderId);
+    if (error) { showToast('❌ Error: ' + error.message); return; }
+    const order = DB.pedidos.find(p => p.id === orderId);
+    if (order) order.estado = 'pendiente';
+    saveLocalData();
+    showToast('↩️ Pedido vuelto a Pendiente');
+    showOrderDetail(orderId);
+    updateStats();
+    renderOrders();
+}
+
+// ==================== REPARTIDOR PREVIEW ====================
+function showRepartidorPreview(orderId) {
+    const order = DB.pedidos.find(p => p.id === orderId);
+    if (!order) return;
+    const suc = DB.sucursales.find(s => s.id === order.sucursalId || s.id === order.sucursal_id);
+    const rep = DB.repartidores.find(r => r.id === order.repartidorId || r.id === order.repartidor_id);
+    const items = order.items || [];
+
+    let content = `
+        <div class="delivery-preview">
+            <div class="delivery-preview-title">🚚 Pedido Asignado</div>
+            <div class="delivery-preview-sub">👤 ${rep?.nombre}<br>🏪 ${suc?.nombre}<br>📍 ${suc?.direccion}</div>
+        </div>
+        <div style="font-weight: 700; color: var(--primary); margin-bottom: 12px; font-size: 1.1rem;">📦 Productos:</div>
+    `;
+    items.forEach(item => {
+        const prod = DB.productos.find(p => p.id === item.productoId || p.id === item.producto_id);
+        content += `<div style="background: white; border-radius: 10px; padding: 14px; margin-bottom: 10px; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center;"><div><div style="font-weight: 700; font-size: 1.05rem;">${prod?.nombre}</div><div style="color: var(--gray); font-size: 0.9rem;">${prod?.categoria}</div></div><div style="font-size: 1.3rem; font-weight: 800; color: var(--primary);">x${item.cantidad}</div></div>`;
+    });
+    content += `<div style="background: var(--light-gray); border-radius: 10px; padding: 14px; margin-top: 16px;"><div style="font-weight: 700; color: var(--primary); margin-bottom: 8px;">📱 Flujo del repartidor:</div><div style="font-size: 0.9rem; color: #555; line-height: 1.6;">1. Va a 🚚 Entregas<br>2. Ve este pedido<br>3. Toca 🚀 Iniciar Ruta<br>4. Toca ✅ Confirmar Entrega<br>5. Hace checklist producto por producto<br>6. Sube foto y observaciones<br>7. Toca Completa/Parcial/Fallida</div></div>`;
+
+    document.getElementById('repartidorPreviewContent').innerHTML = content;
+    showModal('repartidorPreviewModal');
+}
+
+// ==================== DELIVERY ====================
+function startDelivery(orderId) {
+    const order = DB.pedidos.find(p => p.id === orderId);
+    if (!order) return;
+    currentDeliveryOrder = order;
+    deliveryChecklistState = {};
+    const suc = DB.sucursales.find(s => s.id === order.sucursalId || s.id === order.sucursal_id);
+    document.getElementById('deliveryModalTitle').textContent = '✅ Confirmar Entrega';
+    document.getElementById('deliveryInfo').innerHTML = `<div style="font-weight: 700; font-size: 1.1rem; color: var(--primary); margin-bottom: 6px;">🏪 ${suc?.nombre}</div><div style="font-size: 0.9rem; color: #555;">📍 ${suc?.direccion || ''}<br>📅 ${order.fecha} • 📦 ${(order.items || []).length} productos</div>`;
+
+    const items = order.items || [];
+    document.getElementById('deliveryChecklist').innerHTML = items.map((item, idx) => {
+        const prod = DB.productos.find(p => p.id === item.productoId || p.id === item.producto_id);
+        deliveryChecklistState[idx] = { entregado: true, cantidad: item.cantidad };
+        return `<div class="checklist-item delivered" id="checkItem_${idx}"><input type="checkbox" id="chk_${idx}" checked onchange="toggleCheckItem(${idx})"><label for="chk_${idx}">${prod?.nombre}</label><span class="qty" style="font-weight: 700; font-size: 1.1rem;">x${item.cantidad}</span></div><div class="form-group" id="obsItem_${idx}" style="display: none; margin-left: 40px; margin-bottom: 14px; margin-top: -6px;"><input type="text" class="form-input" style="font-size: 0.95rem;" placeholder="¿Qué pasó con este producto?" id="obsInput_${idx}"></div>`;
+    }).join('');
+
+    document.getElementById('deliveryPhoto').value = '';
+    document.getElementById('deliveryPhotoPreview').style.display = 'none';
+    document.getElementById('deliveryObservations').value = '';
+    showModal('deliveryModal');
+}
+
+function toggleCheckItem(idx) {
+    const cb = document.getElementById(`chk_${idx}`);
+    const item = document.getElementById(`checkItem_${idx}`);
+    const obs = document.getElementById(`obsItem_${idx}`);
+    if (cb.checked) { item.classList.remove('failed'); item.classList.add('delivered'); deliveryChecklistState[idx].entregado = true; obs.style.display = 'none'; }
+    else { item.classList.remove('delivered'); item.classList.add('failed'); deliveryChecklistState[idx].entregado = false; obs.style.display = 'block'; document.getElementById(`obsInput_${idx}`)?.focus(); }
+}
+
+function previewPhoto(input, previewId) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => { const p = document.getElementById(previewId); p.src = e.target.result; p.style.display = 'block'; };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function confirmDelivery() { finalizeDelivery('entregado'); }
+function confirmPartialDelivery() { finalizeDelivery('parcial'); }
+function confirmFailedDelivery() { finalizeDelivery('fallido'); }
+
+async function finalizeDelivery(estado) {
+    if (!currentDeliveryOrder) return;
+    const order = DB.pedidos.find(p => p.id === currentDeliveryOrder.id);
+    if (!order) return;
+
+    const items = order.items || [];
+    const checklist = {};
+    items.forEach((item, idx) => {
+        const obsInput = document.getElementById(`obsInput_${idx}`);
+        const obs = obsInput ? obsInput.value.trim() : '';
+        checklist[item.productoId || item.producto_id] = { entregado: deliveryChecklistState[idx]?.entregado ?? true, cantidadPedida: item.cantidad, observacion: obs };
+    });
+
+    const photoInput = document.getElementById('deliveryPhoto');
+    let fotoData = null;
+    if (photoInput.files && photoInput.files[0]) {
+        fotoData = await new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.readAsDataURL(photoInput.files[0]);
+        });
+    }
+
+    showSyncStatus('syncing');
+
+    // Update order in Supabase
+    const updateData = {
+        estado,
+        entregado: new Date().toISOString(),
+        checklist: JSON.stringify(checklist),
+        observaciones: document.getElementById('deliveryObservations').value.trim(),
+        foto_url: fotoData
+    };
+
+    const { error } = await supabase.from('pedidos').update(updateData).eq('id', order.id);
+    if (error) { showToast('❌ Error: ' + error.message); showSyncStatus('offline'); return; }
+
+    // Update stock for delivered items
+    if (estado !== 'fallido') {
+        for (const item of items) {
+            if (checklist[item.productoId || item.producto_id]?.entregado) {
+                const stockItem = DB.stock.find(s => s.producto_id === (item.productoId || item.producto_id) || s.productoId === (item.productoId || item.producto_id));
+                if (stockItem) {
+                    const newQty = Math.max(0, stockItem.cantidad - item.cantidad);
+                    await supabase.from('stock').update({ cantidad: newQty }).eq('id', stockItem.id);
+                    stockItem.cantidad = newQty;
+                }
+            }
+        }
+    }
+
+    // Update local
+    order.estado = estado;
+    order.entregado = updateData.entregado;
+    order.checklist = checklist;
+    order.observaciones = updateData.observaciones;
+    order.foto_url = fotoData;
+    saveLocalData();
+
+    closeModal('deliveryModal');
+    const msgs = { entregado: '✅ Entrega confirmada', parcial: '⚠️ Entrega parcial', fallido: '❌ Entrega fallida' };
+    showToast(msgs[estado]);
+
+    sendTelegramNotification(order, estado);
+
+    updateStats();
+    renderOrders();
+    renderAllOrders();
+    renderMyDeliveries();
+    renderStock();
+    renderStockPreview();
+    showSyncStatus('online');
+}
+
+async function startRoute(orderId) {
+    const order = DB.pedidos.find(p => p.id === orderId);
+    if (!order) return;
+    const { error } = await supabase.from('pedidos').update({ estado: 'en_ruta' }).eq('id', orderId);
+    if (error) { showToast('❌ Error: ' + error.message); return; }
+    order.estado = 'en_ruta';
+    saveLocalData();
+    showToast('🚀 ¡Ruta iniciada!');
+    renderMyDeliveries();
+    updateStats();
+    renderOrders();
+}
+
+// ==================== TELEGRAM ====================
+async function sendTelegramNotification(order, estado) {
+    if (!DB.config.telegramToken || !DB.config.telegramChatId) return;
+    if (!navigator.onLine) { queueTelegram(order, estado); return; }
+
+    const suc = DB.sucursales.find(s => s.id === order.sucursalId || s.id === order.sucursal_id);
+    const rep = DB.repartidores.find(r => r.id === order.repartidorId || r.id === order.repartidor_id);
+    const emojis = { entregado: '✅', parcial: '⚠️', fallido: '❌' };
+    const texts = { entregado: 'ENTREGADO', parcial: 'PARCIAL', fallido: 'FALLIDO' };
+    const items = order.items || [];
+
+    let msg = `${emojis[estado]} *ENTREGA ${texts[estado]}*
+`;
+    msg += `🏪 *Sucursal:* ${escapeMarkdown(suc?.nombre || 'N/A')}
+`;
+    msg += `👤 *Repartidor:* ${escapeMarkdown(rep?.nombre || 'N/A')}
+`;
+    msg += `📅 *Fecha:* ${order.fecha}
+`;
+    msg += `🕐 *Hora:* ${new Date().toLocaleTimeString('es-AR')}
+
+`;
+    msg += `📦 *Productos:*
+`;
+
+    items.forEach(item => {
+        const prod = DB.productos.find(p => p.id === item.productoId || p.id === item.producto_id);
+        const check = order.checklist?.[item.productoId || item.producto_id];
+        const icon = check?.entregado ? '✅' : '❌';
+        const obs = check?.observacion ? ` _(${escapeMarkdown(check.observacion)})_` : '';
+        msg += `${icon} ${escapeMarkdown(prod?.nombre || 'Producto')}: ${item.cantidad}${obs}
+`;
+    });
+
+    if (order.observaciones) msg += `
+📝 *Observaciones:*
+${escapeMarkdown(order.observaciones)}`;
+
+    try {
+        await fetch(`https://api.telegram.org/bot${DB.config.telegramToken}/sendMessage`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: DB.config.telegramChatId, text: msg, parse_mode: 'Markdown' })
+        });
+    } catch (e) { queueTelegram(order, estado); }
+}
+
+function escapeMarkdown(text) {
+    if (!text) return '';
+    return text.replace(/[_*\[\]()~`>#+=|{}.!-]/g, '\$&');
+}
+
+function queueTelegram(order, estado) {
+    const q = JSON.parse(localStorage.getItem('telegramQueue') || '[]');
+    q.push({ orderId: order.id, estado, timestamp: Date.now() });
+    localStorage.setItem('telegramQueue', JSON.stringify(q));
+    showToast('📨 Notificación en cola');
+}
+
+// ==================== STOCK ====================
+function renderStock() {
+    const container = document.getElementById('stockList');
+    if (DB.stock.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div>Sin stock</div></div>';
+        return;
+    }
+    container.innerHTML = DB.stock.map(s => {
+        const prod = DB.productos.find(p => p.id === s.producto_id || p.id === s.productoId);
+        const isLow = s.cantidad < 50;
+        const isCritical = s.cantidad < 20;
+        const color = isCritical ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)';
+        const bg = isCritical ? '#ffebee' : isLow ? '#fff8e1' : '#e8f5e9';
+        return `<div class="list-item" style="border-left: 4px solid ${color}; background: ${bg};"><div class="list-item-info"><div class="list-item-title">${prod?.nombre || 'Producto'}</div><div class="list-item-sub"><span class="tag ${prod?.categoria === 'Packaging' ? 'tag-packaging' : prod?.categoria === 'Descartables' ? 'tag-descartables' : 'tag-lacteos'}">${prod?.categoria || ''}</span></div></div><div style="text-align: right;"><div style="font-size: 1.4rem; font-weight: 800; color: ${color};">${s.cantidad}</div><div style="font-size: 0.75rem; color: var(--gray);">unidades</div></div></div>`;
+    }).join('');
+}
+
+function filterStock() {
+    const search = document.getElementById('searchStock').value.toLowerCase();
+    document.querySelectorAll('#stockList .list-item').forEach(item => {
+        item.style.display = item.textContent.toLowerCase().includes(search) ? 'flex' : 'none';
+    });
+}
+
+async function addStock() {
+    const pid = parseInt(document.getElementById('stockProductSelect').value);
+    const qty = parseInt(document.getElementById('stockQtyAdd').value);
+    if (!pid || !qty || qty < 1) { showToast('❌ Completá todos los campos'); return; }
+
+    const item = DB.stock.find(s => s.producto_id === pid || s.productoId === pid);
+    let result;
+    if (item) {
+        const newQty = item.cantidad + qty;
+        result = await supabase.from('stock').update({ cantidad: newQty }).eq('id', item.id);
+        if (!result.error) item.cantidad = newQty;
+    } else {
+        result = await supabase.from('stock').insert([{ producto_id: pid, cantidad: qty }]).select().single();
+        if (!result.error && result.data) DB.stock.push(result.data);
+    }
+
+    if (result.error) { showToast('❌ Error: ' + result.error.message); return; }
+
+    saveLocalData();
+    closeModal('addStockModal');
+    showToast(`✅ +${qty} unidades agregadas`);
+    renderStock();
+    renderStockPreview();
+    renderProductGrid();
+    populateSelects();
+}
+
+function renderStockPreview() {
+    const container = document.getElementById('stockPreview');
+    const lowStock = DB.stock.filter(s => s.cantidad < 50).sort((a, b) => a.cantidad - b.cantidad);
+    if (lowStock.length === 0) {
+        container.innerHTML = '<div style="color: var(--success); font-size: 0.95rem; font-weight: 500;">✅ Stock en niveles normales</div>';
+        return;
+    }
+    container.innerHTML = `<div style="font-weight: 700; color: var(--danger); margin-bottom: 10px; font-size: 0.95rem;">⚠️ Stock bajo:</div>${lowStock.slice(0, 4).map(s => { const prod = DB.productos.find(p => p.id === s.producto_id || p.id === s.productoId); const isCritical = s.cantidad < 20; return `<div style="color: ${isCritical ? 'var(--danger)' : 'var(--warning)'}; font-size: 0.9rem; margin-bottom: 6px; font-weight: ${isCritical ? '700' : '500'};">${isCritical ? '🔴' : '🟡'} ${prod?.nombre}: <strong>${s.cantidad}</strong> u.</div>`; }).join('')}${lowStock.length > 4 ? `<div style="color: var(--gray); font-size: 0.85rem; margin-top: 4px;">...y ${lowStock.length - 4} más</div>` : ''}`;
+}
+
+// ==================== REPARTIDOR VIEW ====================
+function renderMyDeliveries() {
+    const repName = DB.config.repartidorName;
+    let rep = DB.repartidores.find(r => r.nombre === repName);
+    const container = document.getElementById('repartidorView');
+
+    if (!rep && repName) {
+        const newId = Math.max(...DB.repartidores.map(r => r.id), 0) + 1;
+        rep = { id: newId, nombre: repName };
+        DB.repartidores.push(rep);
+        supabase.from('repartidores').insert([{ nombre: repName }]).then(() => saveLocalData());
+    }
+
+    if (!rep) {
+        container.innerHTML = `<div class="card"><div class="empty-state"><div class="empty-state-icon">👤</div><div style="font-weight: 700; margin-bottom: 8px;">Configurá tu nombre</div><div style="font-size: 0.9rem; margin-bottom: 16px;">Para ver tus entregas, configurá tu nombre en ⚙️ Configuración</div><button class="btn btn-primary" onclick="showSection('config')">Ir a Configuración</button></div></div>`;
+        return;
+    }
+
+    const myOrders = DB.pedidos.filter(p => (p.repartidorId === rep.id || p.repartidor_id === rep.id) && (p.estado === 'pendiente' || p.estado === 'en_ruta')).sort((a, b) => new Date(a.creado || a.created_at || 0) - new Date(b.creado || b.created_at || 0));
+
+    let html = `<div class="delivery-preview" style="margin-bottom: 16px;"><div class="delivery-preview-title">👤 ${rep.nombre}</div><div class="delivery-preview-sub">🚚 Repartidor activo<br>📋 ${myOrders.length} pedidos pendientes</div></div>`;
+
+    if (myOrders.length === 0) {
+        html += `<div class="card"><div class="empty-state"><div class="empty-state-icon">🎉</div><div style="font-weight: 700;">¡Todo entregado!</div><div style="font-size: 0.9rem;">No tenés pedidos pendientes</div></div></div>`;
+    } else {
+        html += `<div style="font-weight: 700; color: var(--primary); margin-bottom: 12px; font-size: 1.1rem;">📋 Tus pedidos:</div>`;
+        myOrders.forEach(order => {
+            const suc = DB.sucursales.find(s => s.id === order.sucursalId || s.id === order.sucursal_id);
+            const isRoute = order.estado === 'en_ruta';
+            const items = order.items || [];
+            html += `<div class="card" style="border-left: 5px solid ${isRoute ? 'var(--primary)' : 'var(--warning)'};"><div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;"><div><div style="font-size: 1.15rem; font-weight: 700; color: var(--primary); margin-bottom: 4px;">🏪 ${suc?.nombre}</div><div style="color: var(--gray); font-size: 0.9rem;">📍 ${suc?.direccion || ''}</div></div><span class="badge ${isRoute ? 'badge-route' : 'badge-pending'}">${isRoute ? '🚚 En Ruta' : '⏳ Pendiente'}</span></div><div style="background: var(--light-gray); border-radius: 10px; padding: 12px; margin-bottom: 14px;"><div style="font-weight: 700; font-size: 0.9rem; color: var(--primary); margin-bottom: 8px;">📦 Productos:</div>${items.map(item => { const prod = DB.productos.find(p => p.id === item.productoId || p.id === item.producto_id); return `<div style="padding: 4px 0; font-size: 0.95rem;">• ${prod?.nombre}: <strong>${item.cantidad}</strong></div>`; }).join('')}</div><div style="display: flex; gap: 10px;">${!isRoute ? `<button class="btn btn-primary" style="flex: 1;" onclick="startRoute(${order.id})">🚀 Iniciar Ruta</button>` : `<button class="btn btn-success" style="flex: 1;" onclick="startDelivery(${order.id})">✅ Confirmar Entrega</button>`}<button class="btn btn-secondary" style="flex: 0;" onclick="showOrderDetail(${order.id})">👁️</button></div></div>`;
+        });
+    }
+
+    const history = DB.pedidos.filter(p => (p.repartidorId === rep.id || p.repartidor_id === rep.id) && (p.estado === 'entregado' || p.estado === 'fallido' || p.estado === 'parcial')).sort((a, b) => new Date(b.entregado || b.creado || 0) - new Date(a.entregado || a.creado || 0)).slice(0, 5);
+    if (history.length > 0) {
+        html += `<div style="font-weight: 700; color: var(--primary); margin: 20px 0 12px; font-size: 1.1rem;">📜 Entregas recientes:</div>`;
+        html += history.map(order => { const suc = DB.sucursales.find(s => s.id === order.sucursalId || s.id === order.sucursal_id); const ec = { entregado: 'var(--success)', fallido: 'var(--danger)', parcial: '#f57f17' }; const el = { entregado: '✅ Entregado', fallido: '❌ Fallido', parcial: '⚠️ Parcial' }; return `<div class="list-item" style="padding: 12px 16px;" onclick="showOrderDetail(${order.id})"><div class="list-item-info"><div style="font-weight: 600; font-size: 0.95rem;">${suc?.nombre}</div><div style="font-size: 0.8rem; color: var(--gray);">${order.fecha}</div></div><span class="badge ${order.estado === 'entregado' ? 'badge-delivered' : order.estado === 'fallido' ? 'badge-failed' : 'badge-partial'}" style="font-size: 0.7rem;">${el[order.estado]}</span></div>`; }).join('');
+    }
+
+    container.innerHTML = html;
+}
+
+// ==================== REPORTS ====================
+function showReport(type) {
+    const container = document.getElementById('reportContent');
+    if (type === 'failed') {
+        const failed = DB.pedidos.filter(p => p.estado === 'fallido' || p.estado === 'parcial').sort((a, b) => new Date(b.creado || 0) - new Date(a.creado || 0));
+        if (failed.length === 0) { container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><div>Sin fallas registradas</div></div>'; return; }
+        container.innerHTML = `<div class="table-responsive"><table><thead><tr><th>Fecha</th><th>Sucursal</th><th>Estado</th><th>Problemas</th></tr></thead><tbody>${failed.map(order => { const suc = DB.sucursales.find(s => s.id === order.sucursalId || s.id === order.sucursal_id); const probs = Object.entries(order.checklist || {}).filter(([k, v]) => !v.entregado).map(([k, v]) => { const prod = DB.productos.find(p => p.id == k); return `${prod?.nombre}: ${v.observacion || 'No entregado'}`; }).join('; '); return `<tr><td>${order.fecha}</td><td><strong>${suc?.nombre || 'N/A'}</strong></td><td><span class="badge ${order.estado === 'fallido' ? 'badge-failed' : 'badge-partial'}">${order.estado === 'fallido' ? 'Fallido' : 'Parcial'}</span></td><td style="font-size: 0.85rem;">${probs || order.observaciones || 'Sin detalle'}</td></tr>`; }).join('')}</tbody></table></div>`;
+    } else if (type === 'daily') {
+        const today = new Date().toISOString().split('T')[0];
+        const t = DB.pedidos.filter(p => p.fecha === today);
+        const e = t.filter(p => p.estado === 'entregado').length;
+        const f = t.filter(p => p.estado === 'fallido').length;
+        const pa = t.filter(p => p.estado === 'parcial').length;
+        container.innerHTML = `<div class="stats-grid" style="margin-bottom: 16px;"><div class="stat-card"><div class="stat-number">${t.length}</div><div class="stat-label">Total</div></div><div class="stat-card"><div class="stat-number" style="color: var(--success);">${e}</div><div class="stat-label">Entregados</div></div><div class="stat-card"><div class="stat-number" style="color: var(--warning);">${pa}</div><div class="stat-label">Parciales</div></div><div class="stat-card"><div class="stat-number" style="color: var(--danger);">${f}</div><div class="stat-label">Fallidos</div></div></div><div class="card"><div style="font-weight: 700; margin-bottom: 12px; color: var(--primary);">📋 Detalle del día (${today}):</div>${t.length === 0 ? '<div style="color: var(--gray);">Sin pedidos hoy</div>' : t.sort((a, b) => new Date(b.creado || 0) - new Date(a.creado || 0)).map(o => { const s = DB.sucursales.find(x => x.id === o.sucursalId || x.id === o.sucursal_id); const r = DB.repartidores.find(x => x.id === o.repartidorId || x.id === o.repartidor_id); const ec = { pendiente: 'var(--warning)', en_ruta: 'var(--primary)', entregado: 'var(--success)', fallido: 'var(--danger)', parcial: '#f57f17' }; return `<div style="padding: 10px; border-bottom: 1px solid #eee;" onclick="showOrderDetail(${o.id})"><strong>${s?.nombre}</strong> - ${r?.nombre || 'Sin repartidor'} - <span style="color: ${ec[o.estado]}; font-weight: 600;">${o.estado}</span></div>`; }).join('')}</div>`;
+    } else if (type === 'sucursal') {
+        const stats = {};
+        DB.pedidos.forEach(p => { if (!stats[p.sucursalId || p.sucursal_id]) stats[p.sucursalId || p.sucursal_id] = { total: 0, entregado: 0, fallido: 0, parcial: 0 }; stats[p.sucursalId || p.sucursal_id].total++; stats[p.sucursalId || p.sucursal_id][p.estado === 'entregado' ? 'entregado' : p.estado === 'fallido' ? 'fallido' : 'parcial']++; });
+        container.innerHTML = `<div class="table-responsive"><table><thead><tr><th>Sucursal</th><th>Total</th><th style="color: var(--success)">✅</th><th style="color: var(--warning)">⚠️</th><th style="color: var(--danger)">❌</th></tr></thead><tbody>${Object.entries(stats).map(([sid, s]) => { const suc = DB.sucursales.find(x => x.id == sid); return `<tr><td><strong>${suc?.nombre || 'N/A'}</strong><br><small style="color: var(--gray)">${suc?.direccion || ''}</small></td><td style="font-weight: 700;">${s.total}</td><td style="color: var(--success); font-weight: 700;">${s.entregado}</td><td style="color: var(--warning); font-weight: 700;">${s.parcial}</td><td style="color: var(--danger); font-weight: 700;">${s.fallido}</td></tr>`; }).join('')}</tbody></table></div>`;
+    } else if (type === 'repartidor') {
+        const stats = {};
+        DB.pedidos.forEach(p => { if (!p.repartidorId && !p.repartidor_id) return; const rid = p.repartidorId || p.repartidor_id; if (!stats[rid]) stats[rid] = { total: 0, entregado: 0, fallido: 0, parcial: 0 }; stats[rid].total++; stats[rid][p.estado === 'entregado' ? 'entregado' : p.estado === 'fallido' ? 'fallido' : 'parcial']++; });
+        container.innerHTML = `<div class="table-responsive"><table><thead><tr><th>Repartidor</th><th>Total</th><th style="color: var(--success)">✅</th><th style="color: var(--warning)">⚠️</th><th style="color: var(--danger)">❌</th></tr></thead><tbody>${Object.entries(stats).map(([rid, s]) => { const rep = DB.repartidores.find(x => x.id == rid); return `<tr><td><strong>${rep?.nombre || 'N/A'}</strong></td><td style="font-weight: 700;">${s.total}</td><td style="color: var(--success); font-weight: 700;">${s.entregado}</td><td style="color: var(--warning); font-weight: 700;">${s.parcial}</td><td style="color: var(--danger); font-weight: 700;">${s.fallido}</td></tr>`; }).join('')}</tbody></table></div>`;
+    }
+}
+
+// ==================== CONFIG ====================
+async function saveTelegramConfig() {
+    DB.config.telegramToken = document.getElementById('telegramToken').value.trim();
+    DB.config.telegramChatId = document.getElementById('telegramChatId').value.trim();
+    saveLocalData();
+
+    // Save to Supabase
+    const { error } = await supabase.from('config').upsert({ 
+        id: 1, 
+        telegram_token: DB.config.telegramToken, 
+        telegram_chat_id: DB.config.telegramChatId,
+        updated_at: new Date().toISOString()
+    });
+    if (error) console.error('Config save error:', error);
+
+    showToast('✅ Configuración Telegram guardada');
+}
+
+function testTelegram() {
+    const token = document.getElementById('telegramToken').value.trim();
+    const chatId = document.getElementById('telegramChatId').value.trim();
+    if (!token || !chatId) { showToast('❌ Completá Token y Chat ID'); return; }
+    const msg = '🧪 *Test Logística Pro*\n✅ Sistema configurado\n📅 ' + new Date().toLocaleString('es-AR');
+    fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'Markdown' }) })
+    .then(r => r.json()).then(data => { if (data.ok) showToast('✅ Notificación enviada. Revisá Telegram.'); else showToast('❌ Error: ' + (data.description || 'Verificá el token')); }).catch(() => showToast('❌ Error de conexión'));
+}
+
+function saveConfig() {
+    DB.config.repartidorName = document.getElementById('repartidorName').value.trim();
+    saveLocalData();
+    showToast('✅ Configuración guardada');
+    if (DB.config.repartidorName) document.getElementById('headerSub').textContent = 'Online • ' + DB.config.repartidorName;
+}
+
+function resetData() {
+    if (confirm('⚠️ ¿Borrar datos locales?\n\nEsto no afecta los datos en la nube (Supabase). Solo borra el caché local de este dispositivo.')) {
+        localStorage.removeItem('logisticaLocalDB');
+        localStorage.removeItem('logisticaConfig');
+        showToast('🗑️ Datos locales borrados. Sincronizando...');
+        syncWithSupabase();
+    }
+}
+
+// ==================== UTILITIES ====================
+function showModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ==================== EDITAR / ELIMINAR PEDIDO ====================
+function openEditOrder(orderId) {
+    const order = DB.pedidos.find(p => p.id === orderId);
+    if (!order) return;
+    document.getElementById('editOrderId').value = orderId;
+    document.getElementById('editOrderSucursal').innerHTML = DB.sucursales.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
+    document.getElementById('editOrderSucursal').value = order.sucursal_id || order.sucursalId || '';
+    document.getElementById('editOrderRepartidor').innerHTML = '<option value="">Sin asignar</option>' + DB.repartidores.map(r => `<option value="${r.id}">${r.nombre}</option>`).join('');
+    document.getElementById('editOrderRepartidor').value = order.repartidor_id || order.repartidorId || '';
+    document.getElementById('editOrderDate').value = order.fecha || '';
+    document.getElementById('editOrderEstado').value = order.estado || 'pendiente';
+    document.getElementById('editOrderObs').value = order.observaciones || '';
+    closeModal('orderDetailModal');
+    showModal('editOrderModal');
+}
+
+async function saveEditOrder() {
+    const id = parseInt(document.getElementById('editOrderId').value);
+    const sucursalId = parseInt(document.getElementById('editOrderSucursal').value);
+    const repartidorId = document.getElementById('editOrderRepartidor').value;
+    const fecha = document.getElementById('editOrderDate').value;
+    const estado = document.getElementById('editOrderEstado').value;
+    const observaciones = document.getElementById('editOrderObs').value.trim();
+    if (!sucursalId || !fecha) { showToast('❌ Sucursal y fecha son obligatorios'); return; }
+
+    const { error } = await supabase.from('pedidos').update({
+        sucursal_id: sucursalId,
+        repartidor_id: repartidorId ? parseInt(repartidorId) : null,
+        fecha, estado, observaciones
+    }).eq('id', id);
+    if (error) { showToast('❌ Error: ' + error.message); return; }
+
+    const order = DB.pedidos.find(p => p.id === id);
+    if (order) {
+        order.sucursal_id = sucursalId; order.sucursalId = sucursalId;
+        order.repartidor_id = repartidorId ? parseInt(repartidorId) : null;
+        order.repartidorId = order.repartidor_id;
+        order.fecha = fecha; order.estado = estado; order.observaciones = observaciones;
+    }
+    saveLocalData();
+    closeModal('editOrderModal');
+    showToast('✅ Pedido actualizado');
+    updateStats(); renderOrders(); renderAllOrders(); renderMyDeliveries();
+}
+
+async function deleteOrder(orderId) {
+    if (!confirm('¿Eliminar este pedido? No se puede deshacer.')) return;
+    const { error } = await supabase.from('pedidos').delete().eq('id', orderId);
+    if (error) { showToast('❌ Error: ' + error.message); return; }
+    DB.pedidos = DB.pedidos.filter(p => p.id !== orderId);
+    saveLocalData();
+    closeModal('orderDetailModal');
+    showToast('🗑️ Pedido eliminado');
+    updateStats(); renderOrders(); renderAllOrders();
+}
+
+// ==================== INSUMOS ====================
+function renderInsumos() {
+    const container = document.getElementById('insumosList');
+    if (!container) return;
+    if (DB.productos.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧴</div><div>Sin insumos cargados</div></div>';
+        return;
+    }
+    container.innerHTML = DB.productos.map(p => {
+        const stock = DB.stock.find(s => s.producto_id === p.id || s.productoId === p.id);
+        const qty = stock?.cantidad || 0;
+        const minimo = p.stock_minimo || 20;
+        const isCritical = qty < minimo * 0.5;
+        const isLow = qty < minimo;
+        const color = isCritical ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)';
+        const bg = isCritical ? '#ffebee' : isLow ? '#fff8e1' : '#e8f5e9';
+        const editBtn = isAdmin ? `<button class="btn btn-tiny btn-secondary" style="margin-top:6px;" onclick="event.stopPropagation(); editInsumoModal(${p.id})">✏️ Editar</button>` : '';
+        return `
+            <div class="list-item" style="border-left:4px solid ${color}; background:${bg}; margin-bottom:10px; cursor:${isAdmin ? 'pointer' : 'default'};" onclick="${isAdmin ? `editInsumoModal(${p.id})` : ''}">
+                <div class="list-item-info">
+                    <div class="list-item-title">${p.nombre}</div>
+                    <div style="display:flex; gap:6px; align-items:center; margin-top:4px; flex-wrap:wrap;">
+                        <span class="tag ${p.categoria === 'Packaging' ? 'tag-packaging' : p.categoria === 'Descartables' ? 'tag-descartables' : p.categoria === 'Lácteos' ? 'tag-lacteos' : 'tag-packaging'}">${p.categoria || 'Sin cat.'}</span>
+                        ${p.unidad_medida ? `<span class="unit-badge">${p.unidad_medida}</span>` : ''}
+                    </div>
+                    ${p.descripcion ? `<div class="insumo-detail">📝 ${p.descripcion}</div>` : ''}
+                    ${p.precio_unitario ? `<div class="insumo-detail">💲 $${p.precio_unitario} / ${p.unidad_medida || 'u.'}</div>` : ''}
+                    ${isLow ? `<div style="font-size:0.75rem; font-weight:700; color:${color}; margin-top:4px;">${isCritical ? '🔴 STOCK CRÍTICO' : '🟡 STOCK BAJO'}</div>` : ''}
+                </div>
+                <div style="text-align:right; min-width:80px; display:flex; flex-direction:column; align-items:flex-end;">
+                    <div style="font-size:1.6rem; font-weight:800; color:${color};">${qty}</div>
+                    <div style="font-size:0.72rem; color:var(--gray);">${p.unidad_medida || 'unidades'}</div>
+                    ${p.stock_minimo ? `<div style="font-size:0.7rem; color:var(--gray);">mín: ${p.stock_minimo}</div>` : ''}
+                    ${editBtn}
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function filterInsumos() {
+    const search = document.getElementById('searchInsumos').value.toLowerCase();
+    document.querySelectorAll('#insumosList .list-item').forEach(item => {
+        item.style.display = item.textContent.toLowerCase().includes(search) ? 'flex' : 'none';
+    });
+}
+
+function openNewInsumoModal() {
+    ['newInsumoNombre','newInsumoDescripcion'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('newInsumoCategoria').value = 'Packaging';
+    document.getElementById('newInsumoUnidad').value = 'un';
+    document.getElementById('newInsumoStockMin').value = '20';
+    document.getElementById('newInsumoPrecio').value = '';
+    document.getElementById('newInsumoStockInicial').value = '0';
+    showModal('newInsumoModal');
+}
+
+async function createInsumo() {
+    const nombre = document.getElementById('newInsumoNombre').value.trim();
+    if (!nombre) { showToast('❌ El nombre es obligatorio'); return; }
+    const payload = {
+        nombre,
+        categoria: document.getElementById('newInsumoCategoria').value,
+        unidad_medida: document.getElementById('newInsumoUnidad').value,
+        descripcion: document.getElementById('newInsumoDescripcion').value.trim() || null,
+        stock_minimo: parseInt(document.getElementById('newInsumoStockMin').value) || 20,
+        precio_unitario: parseFloat(document.getElementById('newInsumoPrecio').value) || null
+    };
+    const stockInicial = parseInt(document.getElementById('newInsumoStockInicial').value) || 0;
+
+    const { data: prod, error: e1 } = await supabase.from('productos').insert([payload]).select().single();
+    if (e1) { showToast('❌ Error: ' + e1.message); return; }
+    DB.productos.push(prod);
+
+    if (stockInicial > 0) {
+        const { data: st } = await supabase.from('stock').insert([{ producto_id: prod.id, cantidad: stockInicial }]).select().single();
+        if (st) DB.stock.push(st);
+    }
+    saveLocalData();
+    closeModal('newInsumoModal');
+    showToast('✅ Insumo creado');
+    renderInsumos(); renderStockPreview(); populateSelects(); renderProductGrid();
+}
+
+function editInsumoModal(id) {
+    const p = DB.productos.find(x => x.id === id);
+    if (!p) return;
+    const stock = DB.stock.find(s => s.producto_id === id || s.productoId === id);
+    document.getElementById('editInsumoId').value = id;
+    document.getElementById('editInsumoNombre').value = p.nombre || '';
+    document.getElementById('editInsumoCategoria').value = p.categoria || 'Packaging';
+    document.getElementById('editInsumoUnidad').value = p.unidad_medida || 'un';
+    document.getElementById('editInsumoDescripcion').value = p.descripcion || '';
+    document.getElementById('editInsumoStockMin').value = p.stock_minimo || 20;
+    document.getElementById('editInsumoPrecio').value = p.precio_unitario || '';
+    document.getElementById('editInsumoStock').value = stock?.cantidad || 0;
+    showModal('editInsumoModal');
+}
+
+async function updateInsumo() {
+    const id = parseInt(document.getElementById('editInsumoId').value);
+    const nombre = document.getElementById('editInsumoNombre').value.trim();
+    if (!nombre) { showToast('❌ El nombre es obligatorio'); return; }
+    const payload = {
+        nombre,
+        categoria: document.getElementById('editInsumoCategoria').value,
+        unidad_medida: document.getElementById('editInsumoUnidad').value,
+        descripcion: document.getElementById('editInsumoDescripcion').value.trim() || null,
+        stock_minimo: parseInt(document.getElementById('editInsumoStockMin').value) || 20,
+        precio_unitario: parseFloat(document.getElementById('editInsumoPrecio').value) || null
+    };
+    const newStock = parseInt(document.getElementById('editInsumoStock').value) || 0;
+
+    const { error: e1 } = await supabase.from('productos').update(payload).eq('id', id);
+    if (e1) { showToast('❌ Error: ' + e1.message); return; }
+    const prod = DB.productos.find(p => p.id === id);
+    if (prod) Object.assign(prod, payload);
+
+    const stockItem = DB.stock.find(s => s.producto_id === id || s.productoId === id);
+    if (stockItem) {
+        await supabase.from('stock').update({ cantidad: newStock }).eq('id', stockItem.id);
+        stockItem.cantidad = newStock;
+    } else if (newStock > 0) {
+        const { data: st } = await supabase.from('stock').insert([{ producto_id: id, cantidad: newStock }]).select().single();
+        if (st) DB.stock.push(st);
+    }
+    saveLocalData();
+    closeModal('editInsumoModal');
+    showToast('✅ Insumo actualizado');
+    renderInsumos(); renderStockPreview(); populateSelects(); renderProductGrid();
+}
+
+async function deleteInsumo() {
+    const id = parseInt(document.getElementById('editInsumoId').value);
+    const prod = DB.productos.find(p => p.id === id);
+    if (!prod) return;
+    if (!confirm(`¿Eliminar "${prod.nombre}"? También se borrará su stock.`)) return;
+    await supabase.from('stock').delete().eq('producto_id', id);
+    const { error } = await supabase.from('productos').delete().eq('id', id);
+    if (error) { showToast('❌ Error: ' + error.message); return; }
+    DB.productos = DB.productos.filter(p => p.id !== id);
+    DB.stock = DB.stock.filter(s => s.producto_id !== id && s.productoId !== id);
+    saveLocalData();
+    closeModal('editInsumoModal');
+    showToast('🗑️ Insumo eliminado');
+    renderInsumos(); populateSelects(); renderProductGrid();
+}
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// Init
+init();
+</script>
+</body>
+</html>
