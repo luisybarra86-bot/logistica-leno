@@ -314,6 +314,11 @@
                 </div>
                 <div class="form-group"><label class="form-label">👤 Tu nombre (repartidor)</label><input type="text" class="form-input" id="repartidorName" placeholder="Ej: Juan Pérez"></div>
                 <button class="btn btn-primary" onclick="saveConfig()">💾 Guardar Config</button>
+                <div style="background:#e3f2fd; border-radius:12px; padding:16px; margin-top:16px;">
+                    <div style="font-weight:700; color:var(--primary); margin-bottom:10px; font-size:1rem;">🔔 Notificaciones</div>
+                    <div id="notifStatus" style="font-size:0.85rem; color:var(--gray); margin-bottom:10px;"></div>
+                    <button class="btn btn-secondary" onclick="testNotification()">🔔 Probar notificación</button>
+                </div>
                 <hr style="margin: 24px 0; border: none; border-top: 2px solid #eee;">
                 <div style="background: #ffebee; border-radius: 12px; padding: 16px;">
                     <div style="font-weight: 700; color: var(--danger); margin-bottom: 8px;">⚠️ Zona Peligrosa</div>
@@ -595,6 +600,7 @@ async function init() {
 
     // Notificaciones del navegador
     requestNotificationPermission();
+    updateNotifStatus();
 
     // Sync de respaldo cada 45s
     startPeriodicSync();
@@ -1766,14 +1772,21 @@ function triggerPedidoNotification(record, eventType, oldRecord) {
     if (!isAdmin) {
         // Repartidor: aviso cuando le asignan un pedido
         const myRep = DB.repartidores.find(r => r.nombre === DB.config.repartidorName);
-        if (!myRep || record.repartidor_id !== myRep.id) return;
-        if (eventType === 'INSERT') {
+        if (!myRep) return;
+        const esParaMi = record.repartidor_id === myRep.id;
+        if (eventType === 'INSERT' && esParaMi) {
             showBrowserNotification('📋 Nuevo pedido asignado', `🏪 ${sucNombre}`);
-        } else if (eventType === 'UPDATE' && oldRecord?.repartidor_id !== record.repartidor_id) {
-            showBrowserNotification('📋 Pedido asignado', `🏪 ${sucNombre}`);
+        } else if (eventType === 'UPDATE' && esParaMi) {
+            if (oldRecord?.repartidor_id !== record.repartidor_id) {
+                showBrowserNotification('📋 Pedido asignado', `🏪 ${sucNombre}`);
+            }
         }
     } else {
-        // Admin: aviso cuando cambia el estado de un pedido
+        // Admin: aviso cuando cambia el estado
+        if (eventType === 'INSERT') {
+            showBrowserNotification('📋 Nuevo pedido creado', `🏪 ${sucNombre}`);
+            return;
+        }
         if (eventType !== 'UPDATE' || oldRecord?.estado === record.estado) return;
         const notifs = {
             en_ruta:   ['🚚 En ruta',          `${repNombre} → ${sucNombre}`],
@@ -1783,6 +1796,43 @@ function triggerPedidoNotification(record, eventType, oldRecord) {
         };
         const n = notifs[record.estado];
         if (n) showBrowserNotification(n[0], n[1]);
+    }
+}
+
+function testNotification() {
+    if (!('Notification' in window)) {
+        showToast('❌ Este navegador no soporta notificaciones');
+        updateNotifStatus();
+        return;
+    }
+    if (Notification.permission === 'denied') {
+        showToast('❌ Notificaciones bloqueadas. Habilitá en Ajustes del teléfono.');
+        updateNotifStatus();
+        return;
+    }
+    if (Notification.permission === 'default') {
+        Notification.requestPermission().then(p => {
+            updateNotifStatus();
+            if (p === 'granted') showBrowserNotification('🔔 Notificaciones activadas', '¡Todo listo! Vas a recibir alertas de entregas.');
+            else showToast('❌ Permiso denegado. Habilitá en Ajustes.');
+        });
+        return;
+    }
+    showBrowserNotification('🔔 Prueba exitosa', '¡Las notificaciones funcionan correctamente! ✅');
+    updateNotifStatus();
+}
+
+function updateNotifStatus() {
+    const el = document.getElementById('notifStatus');
+    if (!el) return;
+    if (!('Notification' in window)) {
+        el.innerHTML = '❌ <b>No soportado</b> en este navegador';
+    } else if (Notification.permission === 'granted') {
+        el.innerHTML = '✅ <b>Activas</b> — vas a recibir alertas de cambios';
+    } else if (Notification.permission === 'denied') {
+        el.innerHTML = '🔴 <b>Bloqueadas</b> — habilitá en Ajustes > Notificaciones';
+    } else {
+        el.innerHTML = '⚪ <b>Sin permiso</b> — tocá "Probar notificación" para activar';
     }
 }
 
