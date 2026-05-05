@@ -226,6 +226,7 @@
                 <div class="quick-action-btn" onclick="showSection('sucursales')"><span class="icon">🏪</span><span class="label">Sucursales</span></div>
                 <div class="quick-action-btn" onclick="showSection('stock')"><span class="icon">📦</span><span class="label">Stock</span></div>
                 <div class="quick-action-btn" onclick="showSection('reports')"><span class="icon">📊</span><span class="label">Reportes</span></div>
+                <div class="quick-action-btn admin-only" onclick="showSection('repartidores')"><span class="icon">👤</span><span class="label">Repartidores</span></div>
             </div>
             <div class="card">
                 <div class="card-header"><span class="card-title">📋 Pedidos de Hoy</span><span style="font-size: 0.85rem; color: var(--gray);" id="todayCount">0 pedidos</span></div>
@@ -303,15 +304,6 @@
         <div id="section-config" class="section">
             <div class="card">
                 <div class="card-header"><span class="card-title">⚙️ Configuración</span></div>
-                <div class="telegram-config">
-                    <h3 style="margin-bottom: 14px; color: var(--primary); font-size: 1.1rem;">📱 Notificaciones Telegram</h3>
-                    <div class="form-group"><label class="form-label">Bot Token</label><input type="text" class="form-input" id="telegramToken" placeholder="123456789:ABC..."></div>
-                    <div class="form-group"><label class="form-label">Chat ID</label><input type="text" class="form-input" id="telegramChatId" placeholder="123456789"></div>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-primary btn-small" style="flex: 1;" onclick="saveTelegramConfig()">💾 Guardar</button>
-                        <button class="btn btn-secondary btn-small" style="flex: 1;" onclick="testTelegram()">🧪 Probar</button>
-                    </div>
-                </div>
                 <div class="form-group"><label class="form-label">👤 Tu nombre (repartidor)</label><input type="text" class="form-input" id="repartidorName" placeholder="Ej: Juan Pérez"></div>
                 <button class="btn btn-primary" onclick="saveConfig()">💾 Guardar Config</button>
                 <div style="background:#e3f2fd; border-radius:12px; padding:16px; margin-top:16px;">
@@ -319,11 +311,17 @@
                     <div id="notifStatus" style="font-size:0.85rem; color:var(--gray); margin-bottom:10px;"></div>
                     <button class="btn btn-secondary" onclick="testNotification()">🔔 Probar notificación</button>
                 </div>
-                <hr style="margin: 24px 0; border: none; border-top: 2px solid #eee;">
-                <div style="background: #ffebee; border-radius: 12px; padding: 16px;">
-                    <div style="font-weight: 700; color: var(--danger); margin-bottom: 8px;">⚠️ Zona Peligrosa</div>
-                    <button class="btn btn-danger" onclick="resetData()">🗑️ Resetear Datos Locales</button>
+            </div>
+        </div>
+
+        <!-- REPARTIDORES -->
+        <div id="section-repartidores" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">👤 Repartidores</span>
+                    <button class="btn btn-small btn-primary admin-only" onclick="showModal('newRepartidorModal')">+ Nuevo</button>
                 </div>
+                <div id="repartidoresList"><div class="empty-state"><div class="loading"></div><div style="margin-top: 12px;">Cargando...</div></div></div>
             </div>
         </div>
     </div>
@@ -534,6 +532,28 @@
         </div>
     </div>
 
+    <!-- MODAL NUEVO REPARTIDOR -->
+    <div class="modal-overlay" id="newRepartidorModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">👤 Nuevo Repartidor</span><button class="modal-close" onclick="closeModal('newRepartidorModal')">&times;</button></div>
+            <div class="form-group"><label class="form-label">Nombre *</label><input type="text" class="form-input" id="newRepartidorNombre" placeholder="Ej: Juan Pérez"></div>
+            <button class="btn btn-success" onclick="createRepartidor()">➕ Crear</button>
+            <button class="btn btn-secondary" onclick="closeModal('newRepartidorModal')">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR REPARTIDOR -->
+    <div class="modal-overlay" id="editRepartidorModal">
+        <div class="modal">
+            <div class="modal-header"><span class="modal-title">✏️ Editar Repartidor</span><button class="modal-close" onclick="closeModal('editRepartidorModal')">&times;</button></div>
+            <input type="hidden" id="editRepartidorId">
+            <div class="form-group"><label class="form-label">Nombre *</label><input type="text" class="form-input" id="editRepartidorNombre"></div>
+            <button class="btn btn-success" onclick="updateRepartidor()">💾 Guardar</button>
+            <button class="btn btn-danger" onclick="deleteRepartidor()">🗑️ Eliminar</button>
+            <button class="btn btn-secondary" onclick="closeModal('editRepartidorModal')">Cancelar</button>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
 <script>
@@ -672,8 +692,6 @@ function loadLocalData() {
         DB.config = JSON.parse(savedConfig);
     }
     // Update UI
-    document.getElementById('telegramToken').value = DB.config.telegramToken || '';
-    document.getElementById('telegramChatId').value = DB.config.telegramChatId || '';
     document.getElementById('repartidorName').value = DB.config.repartidorName || '';
 }
 
@@ -810,6 +828,7 @@ function renderAll() {
     renderOrders();
     renderStockPreview();
     renderSucursales();
+    renderRepartidores();
     renderStock();
     renderMyDeliveries();
     populateSelects();
@@ -837,6 +856,7 @@ function showSection(sectionName) {
     else if (sectionName === 'deliveries') renderMyDeliveries();
     else if (sectionName === 'reports') showReport('daily');
     else if (sectionName === 'insumos') renderInsumos();
+    else if (sectionName === 'repartidores') renderRepartidores();
 }
 
 // ==================== STATS ====================
@@ -938,6 +958,82 @@ async function deleteSucursal() {
     showToast('🗑️ Sucursal eliminada');
     closeModal('editSucursalModal');
     renderSucursales();
+    populateSelects();
+}
+
+// ==================== REPARTIDORES ====================
+function renderRepartidores() {
+    const container = document.getElementById('repartidoresList');
+    if (!container) return;
+    if (DB.repartidores.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👤</div><div>No hay repartidores</div></div>';
+        return;
+    }
+    container.innerHTML = DB.repartidores.map(r => `
+        <div class="list-item" onclick="editRepartidor(${r.id})">
+            <div class="list-item-info">
+                <div class="list-item-title">👤 ${r.nombre}</div>
+            </div>
+            <span style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">✏️ Editar</span>
+        </div>
+    `).join('');
+}
+
+async function createRepartidor() {
+    const nombre = document.getElementById('newRepartidorNombre').value.trim();
+    if (!nombre) { showToast('❌ El nombre es obligatorio'); return; }
+
+    const { data, error } = await supabase.from('repartidores').insert([{ nombre }]).select().single();
+    if (error) { showToast('❌ Error: ' + error.message); return; }
+
+    DB.repartidores.push(data);
+    saveLocalData();
+    document.getElementById('newRepartidorNombre').value = '';
+    closeModal('newRepartidorModal');
+    showToast('✅ Repartidor creado');
+    renderRepartidores();
+    populateSelects();
+}
+
+function editRepartidor(id) {
+    const rep = DB.repartidores.find(r => r.id === id);
+    if (!rep) return;
+    document.getElementById('editRepartidorId').value = id;
+    document.getElementById('editRepartidorNombre').value = rep.nombre;
+    showModal('editRepartidorModal');
+}
+
+async function updateRepartidor() {
+    const id = parseInt(document.getElementById('editRepartidorId').value);
+    const nombre = document.getElementById('editRepartidorNombre').value.trim();
+    if (!nombre) { showToast('❌ El nombre es obligatorio'); return; }
+
+    const { error } = await supabase.from('repartidores').update({ nombre }).eq('id', id);
+    if (error) { showToast('❌ Error: ' + error.message); return; }
+
+    const rep = DB.repartidores.find(r => r.id === id);
+    if (rep) rep.nombre = nombre;
+    saveLocalData();
+    showToast('✅ Repartidor actualizado');
+    closeModal('editRepartidorModal');
+    renderRepartidores();
+    populateSelects();
+}
+
+async function deleteRepartidor() {
+    const id = parseInt(document.getElementById('editRepartidorId').value);
+    const rep = DB.repartidores.find(r => r.id === id);
+    if (!rep) return;
+    if (!confirm('¿Eliminar a "' + rep.nombre + '"?')) return;
+
+    const { error } = await supabase.from('repartidores').delete().eq('id', id);
+    if (error) { showToast('❌ Error: ' + error.message); return; }
+
+    DB.repartidores = DB.repartidores.filter(r => r.id !== id);
+    saveLocalData();
+    showToast('🗑️ Repartidor eliminado');
+    closeModal('editRepartidorModal');
+    renderRepartidores();
     populateSelects();
 }
 
@@ -1435,8 +1531,10 @@ async function startRoute(orderId) {
 }
 
 // ==================== TELEGRAM ====================
+const ADMIN_TELEGRAM_TOKEN = '8734208517:AAEC3K9Y5UveWwzX0yhrd-VEV5rFxYe0po';
+const ADMIN_TELEGRAM_CHAT_ID = '5214189495';
+
 async function sendTelegramNotification(order, estado) {
-    if (!DB.config.telegramToken || !DB.config.telegramChatId) return;
     if (!navigator.onLine) { queueTelegram(order, estado); return; }
 
     const suc = DB.sucursales.find(s => s.id === order.sucursalId || s.id === order.sucursal_id);
@@ -1445,37 +1543,27 @@ async function sendTelegramNotification(order, estado) {
     const texts = { entregado: 'ENTREGADO', parcial: 'PARCIAL', fallido: 'FALLIDO' };
     const items = order.items || [];
 
-    let msg = `${emojis[estado]} *ENTREGA ${texts[estado]}*
-`;
-    msg += `🏪 *Sucursal:* ${escapeMarkdown(suc?.nombre || 'N/A')}
-`;
-    msg += `👤 *Repartidor:* ${escapeMarkdown(rep?.nombre || 'N/A')}
-`;
-    msg += `📅 *Fecha:* ${order.fecha}
-`;
-    msg += `🕐 *Hora:* ${new Date().toLocaleTimeString('es-AR')}
-
-`;
-    msg += `📦 *Productos:*
-`;
+    let msg = `${emojis[estado]} *ENTREGA ${texts[estado]}*\n`;
+    msg += `🏪 *Sucursal:* ${escapeMarkdown(suc?.nombre || 'N/A')}\n`;
+    msg += `👤 *Repartidor:* ${escapeMarkdown(rep?.nombre || 'N/A')}\n`;
+    msg += `📅 *Fecha:* ${order.fecha}\n`;
+    msg += `🕐 *Hora:* ${new Date().toLocaleTimeString('es-AR')}\n\n`;
+    msg += `📦 *Productos:*\n`;
 
     items.forEach(item => {
         const prod = DB.productos.find(p => p.id === item.productoId || p.id === item.producto_id);
         const check = order.checklist?.[item.productoId || item.producto_id];
         const icon = check?.entregado ? '✅' : '❌';
         const obs = check?.observacion ? ` _(${escapeMarkdown(check.observacion)})_` : '';
-        msg += `${icon} ${escapeMarkdown(prod?.nombre || 'Producto')}: ${item.cantidad}${obs}
-`;
+        msg += `${icon} ${escapeMarkdown(prod?.nombre || 'Producto')}: ${item.cantidad}${obs}\n`;
     });
 
-    if (order.observaciones) msg += `
-📝 *Observaciones:*
-${escapeMarkdown(order.observaciones)}`;
+    if (order.observaciones) msg += `\n📝 *Observaciones:*\n${escapeMarkdown(order.observaciones)}`;
 
     try {
-        await fetch(`https://api.telegram.org/bot${DB.config.telegramToken}/sendMessage`, {
+        await fetch(`https://api.telegram.org/bot${ADMIN_TELEGRAM_TOKEN}/sendMessage`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: DB.config.telegramChatId, text: msg, parse_mode: 'Markdown' })
+            body: JSON.stringify({ chat_id: ADMIN_TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' })
         });
     } catch (e) { queueTelegram(order, estado); }
 }
@@ -1676,32 +1764,6 @@ function showReport(type) {
 }
 
 // ==================== CONFIG ====================
-async function saveTelegramConfig() {
-    DB.config.telegramToken = document.getElementById('telegramToken').value.trim();
-    DB.config.telegramChatId = document.getElementById('telegramChatId').value.trim();
-    saveLocalData();
-
-    // Save to Supabase
-    const { error } = await supabase.from('config').upsert({ 
-        id: 1, 
-        telegram_token: DB.config.telegramToken, 
-        telegram_chat_id: DB.config.telegramChatId,
-        updated_at: new Date().toISOString()
-    });
-    if (error) console.error('Config save error:', error);
-
-    showToast('✅ Configuración Telegram guardada');
-}
-
-function testTelegram() {
-    const token = document.getElementById('telegramToken').value.trim();
-    const chatId = document.getElementById('telegramChatId').value.trim();
-    if (!token || !chatId) { showToast('❌ Completá Token y Chat ID'); return; }
-    const msg = '🧪 *Test Logística Pro*\n✅ Sistema configurado\n📅 ' + new Date().toLocaleString('es-AR');
-    fetch(`https://api.telegram.org/bot${token}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'Markdown' }) })
-    .then(r => r.json()).then(data => { if (data.ok) showToast('✅ Notificación enviada. Revisá Telegram.'); else showToast('❌ Error: ' + (data.description || 'Verificá el token')); }).catch(() => showToast('❌ Error de conexión'));
-}
-
 function saveConfig() {
     DB.config.repartidorName = document.getElementById('repartidorName').value.trim();
     saveLocalData();
