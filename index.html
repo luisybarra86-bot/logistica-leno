@@ -1543,34 +1543,36 @@ async function sendTelegramNotification(order, estado) {
     const texts = { entregado: 'ENTREGADO', parcial: 'PARCIAL', fallido: 'FALLIDO' };
     const items = order.items || [];
 
-    let msg = `${emojis[estado]} *ENTREGA ${texts[estado]}*\n`;
-    msg += `🏪 *Sucursal:* ${escapeMarkdown(suc?.nombre || 'N/A')}\n`;
-    msg += `👤 *Repartidor:* ${escapeMarkdown(rep?.nombre || 'N/A')}\n`;
-    msg += `📅 *Fecha:* ${order.fecha}\n`;
-    msg += `🕐 *Hora:* ${new Date().toLocaleTimeString('es-AR')}\n\n`;
-    msg += `📦 *Productos:*\n`;
+    let msg = `${emojis[estado]} <b>ENTREGA ${texts[estado]}</b>\n`;
+    msg += `🏪 <b>Sucursal:</b> ${escapeHtml(suc?.nombre || 'N/A')}\n`;
+    msg += `👤 <b>Repartidor:</b> ${escapeHtml(rep?.nombre || 'N/A')}\n`;
+    msg += `📅 <b>Fecha:</b> ${order.fecha}\n`;
+    msg += `🕐 <b>Hora:</b> ${new Date().toLocaleTimeString('es-AR')}\n\n`;
+    msg += `📦 <b>Productos:</b>\n`;
 
     items.forEach(item => {
         const prod = DB.productos.find(p => p.id === item.productoId || p.id === item.producto_id);
         const check = order.checklist?.[item.productoId || item.producto_id];
         const icon = check?.entregado ? '✅' : '❌';
-        const obs = check?.observacion ? ` _(${escapeMarkdown(check.observacion)})_` : '';
-        msg += `${icon} ${escapeMarkdown(prod?.nombre || 'Producto')}: ${item.cantidad}${obs}\n`;
+        const obs = check?.observacion ? ` <i>(${escapeHtml(check.observacion)})</i>` : '';
+        msg += `${icon} ${escapeHtml(prod?.nombre || 'Producto')}: ${item.cantidad}${obs}\n`;
     });
 
-    if (order.observaciones) msg += `\n📝 *Observaciones:*\n${escapeMarkdown(order.observaciones)}`;
+    if (order.observaciones) msg += `\n📝 <b>Observaciones:</b>\n${escapeHtml(order.observaciones)}`;
 
     try {
-        await fetch(`https://api.telegram.org/bot${ADMIN_TELEGRAM_TOKEN}/sendMessage`, {
+        const res = await fetch(`https://api.telegram.org/bot${ADMIN_TELEGRAM_TOKEN}/sendMessage`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: ADMIN_TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' })
+            body: JSON.stringify({ chat_id: ADMIN_TELEGRAM_CHAT_ID, text: msg, parse_mode: 'HTML' })
         });
+        const data = await res.json();
+        if (!data.ok) showToast('⚠️ Telegram: ' + (data.description || 'Error al enviar'));
     } catch (e) { queueTelegram(order, estado); }
 }
 
-function escapeMarkdown(text) {
+function escapeHtml(text) {
     if (!text) return '';
-    return text.replace(/[_*\[\]()~`>#+=|{}.!-]/g, '\$&');
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function queueTelegram(order, estado) {
