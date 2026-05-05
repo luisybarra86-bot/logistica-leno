@@ -601,6 +601,7 @@ async function init() {
     // Notificaciones del navegador
     requestNotificationPermission();
     updateNotifStatus();
+    subscribeToPush();
 
     // Sync de respaldo cada 45s
     startPeriodicSync();
@@ -1819,6 +1820,7 @@ function testNotification() {
         return;
     }
     showBrowserNotification('🔔 Prueba exitosa', '¡Las notificaciones funcionan correctamente! ✅');
+    subscribeToPush();
     updateNotifStatus();
 }
 
@@ -1833,6 +1835,45 @@ function updateNotifStatus() {
         el.innerHTML = '🔴 <b>Bloqueadas</b> — habilitá en Ajustes > Notificaciones';
     } else {
         el.innerHTML = '⚪ <b>Sin permiso</b> — tocá "Probar notificación" para activar';
+    }
+}
+
+// ==================== WEB PUSH SUBSCRIPTION ====================
+const VAPID_PUBLIC = 'BEl1HQfNe-08WKf79ztUCfsJ3Ki-KELCNeVBif5O1rWmV6mGnzUeF4BXiWYJn8x84iDd4ZFjr2M8Sw0mUMyahyM';
+
+function urlBase64ToUint8Array(base64String) {
+    const pad = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + pad).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function subscribeToPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+            sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC)
+            });
+        }
+
+        const { endpoint, keys } = sub.toJSON();
+        const myRep = DB.repartidores.find(r => r.nombre === DB.config.repartidorName);
+
+        await supabase.from('push_subscriptions').upsert({
+            endpoint,
+            p256dh: keys.p256dh,
+            auth: keys.auth,
+            role: isAdmin ? 'admin' : 'repartidor',
+            repartidor_id: myRep?.id || null
+        }, { onConflict: 'endpoint' });
+    } catch(e) {
+        console.warn('Push subscription error:', e.message);
     }
 }
 

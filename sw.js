@@ -1,4 +1,4 @@
-const CACHE = 'logistica-leno-v1';
+const CACHE = 'logistica-leno-v2';
 const ASSETS = ['./index.html', './icon.svg', './manifest.json'];
 
 self.addEventListener('install', e => {
@@ -20,8 +20,7 @@ self.addEventListener('fetch', e => {
         fetch(e.request)
             .then(res => {
                 if (res.ok && e.request.url.includes(self.location.origin)) {
-                    const copy = res.clone();
-                    caches.open(CACHE).then(c => c.put(e.request, copy));
+                    caches.open(CACHE).then(c => c.put(e.request, res.clone()));
                 }
                 return res;
             })
@@ -29,19 +28,28 @@ self.addEventListener('fetch', e => {
     );
 });
 
-// Push notifications (para futuro)
+// ── Push notifications (app cerrada) ──────────────────────────
 self.addEventListener('push', e => {
-    const data = e.data?.json() || { title: '🚚 Logística', body: 'Nueva actualización' };
+    let data = { title: '🚚 Logística Leno', body: 'Nueva actualización' };
+    try { data = e.data?.json() || data; } catch {}
+
     e.waitUntil(self.registration.showNotification(data.title, {
         body: data.body,
         icon: './icon.svg',
         badge: './icon.svg',
-        tag: 'logistica',
-        renotify: true
+        tag: 'logistica-push',
+        renotify: true,
+        vibrate: [150, 80, 150]
     }));
 });
 
 self.addEventListener('notificationclick', e => {
     e.notification.close();
-    e.waitUntil(clients.openWindow('./'));
+    e.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+            const existing = list.find(c => c.url.includes('logistica-leno'));
+            if (existing) return existing.focus();
+            return clients.openWindow('./');
+        })
+    );
 });
