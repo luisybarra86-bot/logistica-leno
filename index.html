@@ -2031,7 +2031,7 @@ function renderInsumos() {
                         <span class="tag ${p.categoria === 'Packaging' ? 'tag-packaging' : p.categoria === 'Descartables' ? 'tag-descartables' : p.categoria === 'Lácteos' ? 'tag-lacteos' : 'tag-packaging'}">${p.categoria || 'Sin cat.'}</span>
                         ${p.unidad_medida ? `<span class="unit-badge">${p.unidad_medida}</span>` : ''}
                     </div>
-                    ${p.descripcion ? `<div class="insumo-detail">📝 ${p.descripcion}</div>` : ''}
+                    ${p['descripción'] ? `<div class="insumo-detail">📝 ${p['descripción']}</div>` : ''}
                     ${p.precio_unitario ? `<div class="insumo-detail">💲 $${p.precio_unitario} / ${p.unidad_medida || 'u.'}</div>` : ''}
                     ${isLow ? `<div style="font-size:0.75rem; font-weight:700; color:${color}; margin-top:4px;">${isCritical ? '🔴 STOCK CRÍTICO' : '🟡 STOCK BAJO'}</div>` : ''}
                 </div>
@@ -2069,7 +2069,7 @@ async function createInsumo() {
         nombre,
         categoria: document.getElementById('newInsumoCategoria').value,
         unidad_medida: document.getElementById('newInsumoUnidad').value,
-        descripcion: document.getElementById('newInsumoDescripcion').value.trim() || null,
+        'descripción': document.getElementById('newInsumoDescripcion').value.trim() || null,
         stock_minimo: parseInt(document.getElementById('newInsumoStockMin').value) || 20,
         precio_unitario: parseFloat(document.getElementById('newInsumoPrecio').value) || null
     };
@@ -2097,7 +2097,7 @@ function editInsumoModal(id) {
     document.getElementById('editInsumoNombre').value = p.nombre || '';
     document.getElementById('editInsumoCategoria').value = p.categoria || 'Packaging';
     document.getElementById('editInsumoUnidad').value = p.unidad_medida || 'un';
-    document.getElementById('editInsumoDescripcion').value = p.descripcion || '';
+    document.getElementById('editInsumoDescripcion').value = p['descripción'] || '';
     document.getElementById('editInsumoStockMin').value = p.stock_minimo || 20;
     document.getElementById('editInsumoPrecio').value = p.precio_unitario || '';
     document.getElementById('editInsumoStock').value = stock?.cantidad || 0;
@@ -2112,7 +2112,7 @@ async function updateInsumo() {
         nombre,
         categoria: document.getElementById('editInsumoCategoria').value,
         unidad_medida: document.getElementById('editInsumoUnidad').value,
-        descripcion: document.getElementById('editInsumoDescripcion').value.trim() || null,
+        'descripción': document.getElementById('editInsumoDescripcion').value.trim() || null,
         stock_minimo: parseInt(document.getElementById('editInsumoStockMin').value) || 20,
         precio_unitario: parseFloat(document.getElementById('editInsumoPrecio').value) || null
     };
