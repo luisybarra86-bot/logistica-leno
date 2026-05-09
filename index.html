@@ -17,6 +17,38 @@
     <link rel="apple-touch-icon" href="icon.svg">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
     <style>
+        /* === ADMIN DASHBOARD DESIGN SYSTEM === */
+        :root{--primary:#2563eb;--primary-dark:#1d4ed8;--pendiente:#f59e0b;--camino:#3b82f6;--entregado:#10b981;--cancelado:#ef4444;--bg:#f3f4f6;--card:#fff;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;--badge-pend-bg:#fef3c7;--badge-pend-text:#92400e;--badge-cam-bg:#dbeafe;--badge-cam-text:#1e40af;--badge-ent-bg:#d1fae5;--badge-ent-text:#065f46;--shadow-sm:0 1px 2px rgba(0,0,0,0.05);--shadow-md:0 4px 6px -1px rgba(0,0,0,0.1);--shadow-lg:0 10px 15px -3px rgba(0,0,0,0.1);--r-sm:8px;--r-md:12px;--r-lg:16px;}
+        .admin-dashboard{padding:16px 16px 100px;max-width:1200px;margin:0 auto;background:var(--bg);min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
+        .dashboard-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}.dashboard-header h1{font-size:22px;font-weight:700;color:var(--text);margin:0;}.fecha{color:var(--muted);font-size:13px;margin:4px 0 0;}
+        .btn-refresh{background:var(--card);border:1px solid var(--border);padding:8px 14px;border-radius:var(--r-md);cursor:pointer;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px;}.btn-refresh:hover{background:var(--bg);transform:translateY(-1px);box-shadow:var(--shadow-sm);}.btn-refresh.syncing{opacity:0.7;pointer-events:none;}.sync-spinner{display:inline-block;animation:spin-dash 1s linear infinite;}@keyframes spin-dash{to{transform:rotate(360deg);}}
+        .metrics-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;}@media(min-width:768px){.metrics-grid{grid-template-columns:repeat(4,1fr);gap:16px;}}
+        .metric-card{background:var(--card);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:12px;border-left:4px solid transparent;transition:transform 0.2s,box-shadow 0.2s;animation:slideIn 0.4s ease-out forwards;opacity:0;}.metric-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}.metric-card:nth-child(1){animation-delay:0.1s;}.metric-card:nth-child(2){animation-delay:0.2s;}.metric-card:nth-child(3){animation-delay:0.3s;}.metric-card:nth-child(4){animation-delay:0.4s;}@keyframes slideIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+        .metric-pedidos{border-left-color:var(--primary);}.metric-pendientes{border-left-color:var(--pendiente);}.metric-entregados{border-left-color:var(--entregado);}.metric-stock{border-left-color:var(--pendiente);}
+        .metric-icon{font-size:24px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:var(--bg);border-radius:var(--r-sm);flex-shrink:0;}
+        .metric-info{display:flex;flex-direction:column;}.metric-number{font-size:26px;font-weight:700;color:var(--text);line-height:1;}.metric-label{font-size:12px;color:var(--muted);margin-top:4px;}.metric-trend{font-size:11px;margin-top:4px;font-weight:600;}.trend-up{color:var(--entregado);}.trend-down{color:var(--cancelado);}
+        .metric-badge{font-size:10px;padding:2px 8px;border-radius:9999px;margin-top:4px;width:fit-content;font-weight:600;}.badge-urgente{background:var(--badge-pend-bg);color:var(--badge-pend-text);}.badge-warning{background:#fee2e2;color:#991b1b;}
+        .chart-section{background:var(--card);border-radius:var(--r-md);padding:16px;margin-bottom:20px;box-shadow:var(--shadow-sm);}.chart-section h3{margin:0 0 16px;font-size:15px;font-weight:600;}
+        .bar-chart{display:flex;align-items:flex-end;justify-content:space-around;height:120px;gap:8px;padding:0 4px;}.bar{flex:1;background:var(--primary);border-radius:6px 6px 0 0;min-height:20px;position:relative;transition:all 0.3s;opacity:0.7;cursor:pointer;max-width:40px;}.bar:hover{opacity:1;transform:scaleY(1.05);}.bar.active{opacity:1;background:var(--primary-dark);}.bar::before{content:attr(data-day);position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--muted);white-space:nowrap;}.bar::after{content:attr(data-value);position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:600;color:var(--text);opacity:0;transition:opacity 0.2s;}.bar:hover::after{opacity:1;}
+        .recent-orders{background:var(--card);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow-sm);margin-bottom:20px;}.section-header{display:flex;flex-direction:column;gap:12px;margin-bottom:16px;}@media(min-width:640px){.section-header{flex-direction:row;justify-content:space-between;align-items:center;}}.section-header h3{margin:0;font-size:15px;font-weight:600;}
+        .filter-tabs{display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:var(--r-sm);overflow-x:auto;-webkit-overflow-scrolling:touch;}.tab{border:none;background:transparent;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--muted);transition:all 0.2s;white-space:nowrap;font-weight:500;}.tab.active{background:var(--card);color:var(--text);box-shadow:var(--shadow-sm);font-weight:600;}
+        .orders-list{display:flex;flex-direction:column;gap:8px;}.order-item{display:flex;align-items:flex-start;gap:12px;padding:14px;border-radius:var(--r-sm);background:var(--bg);transition:all 0.2s;cursor:pointer;}.order-item:hover{background:#e5e7eb;transform:translateX(4px);}.order-item.hidden{display:none;}
+        .order-status-indicator{width:4px;height:40px;border-radius:2px;flex-shrink:0;margin-top:2px;}.status-pendiente{background:var(--pendiente);}.status-camino{background:var(--camino);}.status-entregado{background:var(--entregado);}.status-cancelado{background:var(--cancelado);}
+        .order-info{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0;}.order-info strong{font-size:14px;color:var(--text);font-weight:600;}.order-info span{font-size:12px;color:var(--muted);}
+        .order-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}.order-time{font-size:11px;color:var(--muted);font-weight:500;}.order-badge{padding:3px 10px;border-radius:9999px;font-size:10px;font-weight:600;}.badge-pendiente{background:var(--badge-pend-bg);color:var(--badge-pend-text);}.badge-camino{background:var(--badge-cam-bg);color:var(--badge-cam-text);}.badge-entregado{background:var(--badge-ent-bg);color:var(--badge-ent-text);}
+        .admin-bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);display:flex;justify-content:space-around;align-items:center;padding:8px 0 calc(8px + env(safe-area-inset-bottom));box-shadow:0 -4px 20px rgba(0,0,0,0.08);z-index:100;border-radius:var(--r-lg) var(--r-lg) 0 0;}.admin-bottom-nav .nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:var(--muted);font-size:10px;position:relative;padding:4px 16px;border:none;background:none;cursor:pointer;font-family:inherit;}.admin-bottom-nav .nav-item.active{color:var(--primary);}.admin-bottom-nav .nav-icon{font-size:20px;line-height:1;}.admin-bottom-nav .nav-label{font-size:10px;font-weight:500;}.admin-bottom-nav .nav-badge{position:absolute;top:-2px;right:8px;background:var(--cancelado);color:white;font-size:9px;min-width:16px;height:16px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-weight:600;padding:0 4px;}
+        .nav-fab-wrapper{position:relative;width:56px;height:40px;display:flex;align-items:flex-start;justify-content:center;}.nav-fab{width:56px;height:56px;border-radius:9999px;background:var(--primary);color:white;border:none;font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-lg);transform:translateY(-20px);cursor:pointer;transition:transform 0.2s;font-family:inherit;}.nav-fab:active{transform:translateY(-16px) scale(0.95);}
+        @media(min-width:768px){.admin-bottom-nav{display:none;}.admin-dashboard{padding-bottom:16px;}}
+        .filter-tabs::-webkit-scrollbar,.orders-list::-webkit-scrollbar{width:0;height:0;}
+        .admin-dashboard.syncing .metric-card,.admin-dashboard.syncing .chart-section,.admin-dashboard.syncing .recent-orders{opacity:0.6;pointer-events:none;}
+
+        /* === INTEGRATION RULES === */
+        body.is-admin .header{display:none;}
+        body.is-admin .content{display:none;}
+        body.is-admin #main-bottom-nav{display:none;}
+        #admin-panel{display:none;}
+        body.is-admin #admin-panel{display:block;}
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --primary: #1a237e; --primary-light: #3949ab; --secondary: #00acc1;
@@ -333,7 +365,7 @@
         </div>
     </div>
 
-    <div class="bottom-nav">
+    <div class="bottom-nav" id="main-bottom-nav">
         <div class="nav-item admin-only active" onclick="showSection('dashboard')"><span class="icon">🏠</span><span>Inicio</span></div>
         <div class="nav-item admin-only" onclick="showSection('sucursales')"><span class="icon">🏪</span><span>Sucursales</span></div>
         <div class="nav-item admin-only" onclick="showSection('orders')"><span class="icon">📋</span><span>Pedidos</span></div>
@@ -575,6 +607,42 @@
     </div>
 
     <div class="toast" id="toast"></div>
+
+    <!-- ADMIN PANEL -->
+    <div id="admin-panel">
+      <div class="admin-dashboard" id="admin-dashboard">
+        <div class="dashboard-header">
+          <div><h1>Panel de Control</h1><p class="fecha" id="fecha-hoy"></p></div>
+          <button class="btn-refresh" id="btn-sync" onclick="syncData()">Sincronizar</button>
+        </div>
+        <div class="metrics-grid">
+          <div class="metric-card metric-pedidos"><div class="metric-icon">📋</div><div class="metric-info"><span class="metric-number" id="pedidos-hoy">0</span><span class="metric-label">Pedidos hoy</span><span class="metric-trend trend-up" id="trend-pedidos">0% vs ayer</span></div></div>
+          <div class="metric-card metric-pendientes"><div class="metric-icon">⏳</div><div class="metric-info"><span class="metric-number" id="pedidos-pendientes">0</span><span class="metric-label">Pendientes</span><span class="metric-badge badge-urgente" id="badge-urgentes" style="display:none">0 urgentes</span></div></div>
+          <div class="metric-card metric-entregados"><div class="metric-icon">✅</div><div class="metric-info"><span class="metric-number" id="pedidos-entregados">0</span><span class="metric-label">Entregados</span><span class="metric-trend trend-up" id="trend-entregados">0% exito</span></div></div>
+          <div class="metric-card metric-stock"><div class="metric-icon">📦</div><div class="metric-info"><span class="metric-number" id="stock-alertas">0</span><span class="metric-label">Stock bajo</span><span class="metric-badge badge-warning" id="badge-stock" style="display:none">Revisar</span></div></div>
+        </div>
+        <div class="chart-section"><h3>Pedidos ultimos 7 dias</h3><div class="bar-chart" id="chart-semanal"></div></div>
+        <div class="recent-orders">
+          <div class="section-header">
+            <h3>Pedidos Recientes</h3>
+            <div class="filter-tabs">
+              <button class="tab active" data-filter="todos" onclick="filterOrders('todos')">Todos</button>
+              <button class="tab" data-filter="pendiente" onclick="filterOrders('pendiente')">Pendientes</button>
+              <button class="tab" data-filter="camino" onclick="filterOrders('camino')">En camino</button>
+              <button class="tab" data-filter="entregado" onclick="filterOrders('entregado')">Entregados</button>
+            </div>
+          </div>
+          <div class="orders-list" id="orders-list"></div>
+        </div>
+      </div>
+      <nav class="admin-bottom-nav">
+        <button class="nav-item active" onclick="navigate('pedidos',this)"><span class="nav-icon">📋</span><span class="nav-label">Pedidos</span><span class="nav-badge" id="nav-badge-pedidos" style="display:none">0</span></button>
+        <button class="nav-item" onclick="navigate('stock',this)"><span class="nav-icon">📦</span><span class="nav-label">Stock</span></button>
+        <div class="nav-fab-wrapper"><button class="nav-fab" onclick="openNewOrder()">+</button></div>
+        <button class="nav-item" onclick="navigate('reportes',this)"><span class="nav-icon">📊</span><span class="nav-label">Reportes</span></button>
+        <button class="nav-item" onclick="navigate('config',this)"><span class="nav-icon">⚙️</span><span class="nav-label">Mas</span></button>
+      </nav>
+    </div>
 
 <script>
 // ==================== SUPABASE CONFIG ====================
@@ -2210,6 +2278,102 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js')
             .catch(() => {});
     });
+}
+
+// ==================== ADMIN DASHBOARD ====================
+const DIAS=['Lun','Mar','Mie','Jue','Vie','Sab','Dom'];let pedidosData=[],stockData=[],historialData=[];
+document.addEventListener('DOMContentLoaded',()=>{if(isAdmin){initDashboard();setInterval(()=>{if(!document.hidden)syncData(true)},30000);}});
+function initDashboard(){actualizarFecha();syncData();}
+function actualizarFecha(){const hoy=new Date();const el=document.getElementById('fecha-hoy');if(el)el.textContent='Hoy, '+hoy.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});}
+
+async function syncData(silencioso=false){
+  const btn=document.getElementById('btn-sync'),dash=document.getElementById('admin-dashboard');
+  if(!btn||!dash)return;
+  if(!silencioso){btn.classList.add('syncing');btn.innerHTML='<span class="sync-spinner">↻</span> Sincronizando...';dash.classList.add('syncing');}
+  try{
+    // REEMPLAZAR: const pedidos=await pb.collection('pedidos').getFullList({sort:'-created'});
+    // REEMPLAZAR: const stock=await pb.collection('stock').getFullList();
+    await new Promise(r=>setTimeout(r,600));
+    const demo=generarDatosDemo();pedidosData=demo.pedidos;stockData=demo.stock;historialData=demo.historial;
+    actualizarMetricas();generarGrafico();renderizarPedidos();actualizarBadgeNav();
+    if(!silencioso)mostrarToast('Datos actualizados');
+  }catch(e){console.error(e);if(!silencioso)mostrarToast('Error al sincronizar');}
+  finally{if(!silencioso){btn.classList.remove('syncing');btn.innerHTML='Sincronizar';dash.classList.remove('syncing');}}
+}
+
+function actualizarMetricas(){
+  const hoyStr=new Date().toDateString();
+  const hoy=pedidosData.filter(p=>new Date(p.created).toDateString()===hoyStr).length;
+  const pend=pedidosData.filter(p=>p.status==='pendiente').length;
+  const urg=pedidosData.filter(p=>p.status==='pendiente'&&p.prioridad==='urgente').length;
+  const ent=pedidosData.filter(p=>p.status==='entregado').length;
+  const totalComp=ent+pedidosData.filter(p=>p.status==='cancelado').length;
+  const exito=totalComp>0?Math.round((ent/totalComp)*100):0;
+  const stockB=stockData.filter(s=>s.cantidad<s.minimo).length;
+  animarNumero('pedidos-hoy',hoy);animarNumero('pedidos-pendientes',pend);animarNumero('pedidos-entregados',ent);animarNumero('stock-alertas',stockB);
+  const bu=document.getElementById('badge-urgentes');if(bu){if(urg>0){bu.textContent=urg+' urgente'+(urg>1?'s':'');bu.style.display='inline-block';}else{bu.style.display='none';}}
+  const bs=document.getElementById('badge-stock');if(bs)bs.style.display=stockB>0?'inline-block':'none';
+  const tp=document.getElementById('trend-pedidos');if(tp)tp.textContent='12% vs ayer';
+  const te=document.getElementById('trend-entregados');if(te)te.textContent=exito+'% exito';
+}
+
+function animarNumero(id,final,dur=800){
+  const el=document.getElementById(id);if(!el)return;
+  const ini=parseInt(el.textContent)||0,diff=final-ini,inc=diff/(dur/16);let cur=ini;
+  const t=setInterval(()=>{cur+=inc;if((inc>0&&cur>=final)||(inc<0&&cur<=final)){el.textContent=final;clearInterval(t);}else el.textContent=Math.floor(cur);},16);
+}
+
+function generarGrafico(){
+  const chart=document.getElementById('chart-semanal');if(!chart)return;
+  const datos=historialData.length?historialData:[0,0,0,0,0,0,0],max=Math.max(...datos,1);
+  const hoy=new Date().getDay(),dias=[];
+  for(let i=6;i>=0;i--){dias.push(DIAS[(hoy-1-i+7)%7]);}
+  chart.innerHTML=datos.map((v,i)=>'<div class="bar '+(i===6?'active':'')+'" style="height:'+Math.max((v/max)*100,8)+'%" data-day="'+dias[i]+'" data-value="'+v+'"></div>').join('');
+}
+
+function renderizarPedidos(filtro='todos'){
+  const lista=document.getElementById('orders-list');if(!lista)return;
+  let p=pedidosData;if(filtro!=='todos')p=p.filter(x=>x.status===filtro);
+  p.sort((a,b)=>new Date(b.created)-new Date(a.created));p=p.slice(0,10);
+  if(!p.length){lista.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">📭</div><div>Sin pedidos</div></div>';return;}
+  const cfg={pendiente:{c:'status-pendiente',b:'badge-pendiente',t:'Pendiente'},camino:{c:'status-camino',b:'badge-camino',t:'En camino'},entregado:{c:'status-entregado',b:'badge-entregado',t:'Entregado'},cancelado:{c:'status-cancelado',b:'badge-cancelado',t:'Cancelado'}};
+  lista.innerHTML=p.map(x=>{
+    const c=cfg[x.status]||cfg.pendiente,hora=new Date(x.created).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+    return'<div class="order-item" data-status="'+x.status+'" onclick="verPedido(\''+x.id+'\')"><div class="order-status-indicator '+c.c+'"></div><div class="order-info"><strong>#'+(x.numero||x.id.slice(-4))+' - '+(x.sucursal||'Sucursal')+'</strong><span>📍 '+(x.direccion||'Sin direccion')+'</span><span>👤 '+(x.repartidor||'Sin asignar')+'</span></div><div class="order-meta"><span class="order-time">'+hora+'</span><span class="order-badge '+c.b+'">'+c.t+'</span></div></div>';
+  }).join('');
+}
+
+function filterOrders(filtro){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.filter===filtro));
+  renderizarPedidos(filtro);
+}
+
+function navigate(seccion,el){
+  document.querySelectorAll('.admin-bottom-nav .nav-item').forEach(x=>x.classList.remove('active'));
+  if(el)el.classList.add('active');
+  console.log('Admin nav:',seccion);
+}
+function openNewOrder(){if(typeof showModal==='function')showModal('newOrderModal');}
+function verPedido(id){console.log('Ver pedido:',id);}
+
+function actualizarBadgeNav(){
+  const pend=pedidosData.filter(p=>p.status==='pendiente').length,badge=document.getElementById('nav-badge-pedidos');
+  if(!badge)return;
+  if(pend>0){badge.textContent=pend>99?'99+':pend;badge.style.display='flex';}else{badge.style.display='none';}
+}
+
+function mostrarToast(msg){
+  const t=document.getElementById('toast');if(!t)return;
+  t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+function generarDatosDemo(){
+  const est=['pendiente','camino','entregado','cancelado'],suc=['Centro','Norte','Sur','Oeste'],dir=['Av. Corrientes 1234','Av. Libertador 567','Av. Santa Fe 890','Av. Cordoba 432'],rep=['Juan Perez','Maria Lopez','Carlos Ruiz','Ana Garcia'];
+  return{
+    pedidos:Array.from({length:15},(_,i)=>({id:'ped_'+i,numero:1024+i,status:est[Math.floor(Math.random()*(i<5?2:4))],sucursal:'Sucursal '+suc[Math.floor(Math.random()*suc.length)],direccion:dir[Math.floor(Math.random()*dir.length)],repartidor:rep[Math.floor(Math.random()*rep.length)],prioridad:Math.random()>0.7?'urgente':'normal',created:new Date(Date.now()-Math.random()*86400000*3).toISOString()})),
+    stock:Array.from({length:20},(_,i)=>({id:'stock_'+i,nombre:'Insumo '+(i+1),cantidad:Math.floor(Math.random()*100),minimo:20})),
+    historial:[4,7,9,5,10,3,6]
+  };
 }
 
 // Init
