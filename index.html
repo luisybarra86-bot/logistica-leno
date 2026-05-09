@@ -619,10 +619,10 @@
           <button class="btn-refresh" id="btn-sync" onclick="syncData()">Sincronizar</button>
         </div>
         <div class="metrics-grid">
-          <div class="metric-card metric-pedidos"><div class="metric-icon">📋</div><div class="metric-info"><span class="metric-number" id="pedidos-hoy">0</span><span class="metric-label">Pedidos hoy</span><span class="metric-trend trend-up" id="trend-pedidos">0% vs ayer</span></div></div>
-          <div class="metric-card metric-pendientes"><div class="metric-icon">⏳</div><div class="metric-info"><span class="metric-number" id="pedidos-pendientes">0</span><span class="metric-label">Pendientes</span><span class="metric-badge badge-urgente" id="badge-urgentes" style="display:none">0 urgentes</span></div></div>
-          <div class="metric-card metric-entregados"><div class="metric-icon">✅</div><div class="metric-info"><span class="metric-number" id="pedidos-entregados">0</span><span class="metric-label">Entregados</span><span class="metric-trend trend-up" id="trend-entregados">0% exito</span></div></div>
-          <div class="metric-card metric-stock"><div class="metric-icon">📦</div><div class="metric-info"><span class="metric-number" id="stock-alertas">0</span><span class="metric-label">Stock bajo</span><span class="metric-badge badge-warning" id="badge-stock" style="display:none">Revisar</span></div></div>
+          <div class="metric-card metric-pedidos" style="cursor:pointer" onclick="irALista('hoy')"><div class="metric-icon">📋</div><div class="metric-info"><span class="metric-number" id="pedidos-hoy">0</span><span class="metric-label">Pedidos hoy</span><span class="metric-trend trend-up" id="trend-pedidos">0% vs ayer</span></div></div>
+          <div class="metric-card metric-pendientes" style="cursor:pointer" onclick="irALista('pendiente')"><div class="metric-icon">⏳</div><div class="metric-info"><span class="metric-number" id="pedidos-pendientes">0</span><span class="metric-label">Pendientes</span><span class="metric-badge badge-urgente" id="badge-urgentes" style="display:none">0 urgentes</span></div></div>
+          <div class="metric-card metric-entregados" style="cursor:pointer" onclick="irALista('entregado')"><div class="metric-icon">✅</div><div class="metric-info"><span class="metric-number" id="pedidos-entregados">0</span><span class="metric-label">Entregados</span><span class="metric-trend trend-up" id="trend-entregados">0% exito</span></div></div>
+          <div class="metric-card metric-stock" style="cursor:pointer" onclick="navigate('stock', document.querySelector('#admin-nav .nav-item:nth-child(2)'))"><div class="metric-icon">📦</div><div class="metric-info"><span class="metric-number" id="stock-alertas">0</span><span class="metric-label">Stock bajo</span><span class="metric-badge badge-warning" id="badge-stock" style="display:none">Revisar</span></div></div>
         </div>
         <div class="chart-section"><h3>Pedidos ultimos 7 dias</h3><div class="bar-chart" id="chart-semanal"></div></div>
         <div class="recent-orders">
@@ -2370,6 +2370,25 @@ function renderizarPedidos(filtro='todos'){
 function filterOrders(filtro){
   document.querySelectorAll('#admin-panel .tab').forEach(t=>t.classList.toggle('active',t.dataset.filter===filtro));
   renderizarPedidos(filtro);
+}
+
+function irALista(filtro){
+  const hoyStr=new Date().toISOString().split('T')[0];
+  if(filtro==='hoy'){
+    // Filtrar pedidos de hoy por fecha
+    document.querySelectorAll('#admin-panel .tab').forEach(t=>t.classList.toggle('active',t.dataset.filter==='todos'));
+    const lista=document.getElementById('orders-list');if(!lista)return;
+    let p=pedidosData.filter(x=>x.fecha===hoyStr||new Date(x.created).toDateString()===new Date().toDateString());
+    p.sort((a,b)=>new Date(b.created)-new Date(a.created));
+    if(!p.length){lista.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">📭</div><div>Sin pedidos hoy</div></div>';}
+    else{
+      const cfg={pendiente:{c:'status-pendiente',b:'badge-pendiente',t:'Pendiente'},camino:{c:'status-camino',b:'badge-camino',t:'En camino'},entregado:{c:'status-entregado',b:'badge-entregado',t:'Entregado'},cancelado:{c:'status-cancelado',b:'badge-cancelado',t:'Cancelado'}};
+      lista.innerHTML=p.map(x=>{const c=cfg[x.status]||cfg.pendiente,hora=new Date(x.created).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});return'<div class="order-item" onclick="verPedido(\''+x.id+'\')"><div class="order-status-indicator '+c.c+'"></div><div class="order-info"><strong>#'+x.numero+' — '+x.sucursal+'</strong><span>👤 '+x.repartidor+'</span></div><div class="order-meta"><span class="order-time">'+hora+'</span><span class="order-badge '+c.b+'">'+c.t+'</span></div></div>';}).join('');
+    }
+  }else{
+    filterOrders(filtro);
+  }
+  document.querySelector('.recent-orders')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function navigate(seccion,el){
