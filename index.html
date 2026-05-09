@@ -241,6 +241,74 @@
         .pedido-insumos-box { background: #f0f2ff; border: 2px solid #e8eaf6; border-radius: 14px; padding: 14px; }
         .pedido-footer { padding: 12px 16px 22px; border-top: 2px solid #f0f0f0; flex-shrink: 0; background: white; }
         @media (min-width: 768px) { .modal.modal-pedido { border-radius: 16px; } .pedido-header { border-radius: 16px 16px 0 0; } }
+
+        /* === ADMIN — ESTILO NUEVO EN SECCIONES SECUNDARIAS === */
+        body.is-admin .header{background:#2563eb;}
+        body.is-admin .content{background:var(--bg);}
+
+        /* Cards */
+        body.is-admin .card{border-radius:var(--r-md);box-shadow:var(--shadow-sm);padding:16px;border:none;}
+        body.is-admin .card-title{font-size:15px;font-weight:600;color:var(--text);}
+        body.is-admin .card-header{margin-bottom:14px;}
+
+        /* List items → estilo nuevo tipo order-item */
+        body.is-admin .list-item{background:var(--bg);border-radius:var(--r-sm);box-shadow:none;padding:14px;margin-bottom:8px;}
+        body.is-admin .list-item:active{transform:none;}
+        body.is-admin .list-item:hover{background:#e5e7eb;transform:translateX(3px);}
+        body.is-admin .list-item-title{font-size:14px;font-weight:600;color:var(--text);}
+        body.is-admin .list-item-sub{font-size:12px;color:var(--muted);}
+        body.is-admin .list-item-products{font-size:11px;color:var(--muted);border-top-color:var(--border);}
+
+        /* Badges */
+        body.is-admin .badge{border-radius:9999px;font-size:11px;padding:3px 10px;}
+        body.is-admin .badge-pending{background:var(--badge-pend-bg);color:var(--badge-pend-text);}
+        body.is-admin .badge-route{background:var(--badge-cam-bg);color:var(--badge-cam-text);}
+        body.is-admin .badge-delivered{background:var(--badge-ent-bg);color:var(--badge-ent-text);}
+        body.is-admin .badge-failed{background:#fee2e2;color:#991b1b;}
+        body.is-admin .badge-partial{background:var(--badge-pend-bg);color:var(--badge-pend-text);}
+
+        /* Botones */
+        body.is-admin .btn{border-radius:var(--r-sm);font-size:14px;box-shadow:none;}
+        body.is-admin .btn-primary{background:#2563eb;}
+        body.is-admin .btn-primary:hover{background:#1d4ed8;}
+        body.is-admin .btn-secondary{background:var(--bg);color:var(--text);border:1px solid var(--border);box-shadow:none;}
+        body.is-admin .btn-small{padding:8px 12px;font-size:12px;}
+        body.is-admin .btn-tiny{padding:5px 9px;font-size:11px;}
+
+        /* Formularios */
+        body.is-admin .form-input,body.is-admin .form-select,body.is-admin .form-textarea{border-radius:var(--r-sm);border-color:var(--border);font-size:14px;background:var(--card);padding:12px;}
+        body.is-admin .form-input:focus,body.is-admin .form-select:focus,body.is-admin .form-textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,0.1);}
+        body.is-admin .form-label{font-size:13px;font-weight:600;color:var(--text);}
+
+        /* Stats, sucursales, insumos */
+        body.is-admin .stat-card{border-radius:var(--r-md);box-shadow:var(--shadow-sm);}
+        body.is-admin .stat-number{color:#2563eb;}
+        body.is-admin .stat-label{font-size:12px;}
+        body.is-admin .sucursal-card{border-radius:var(--r-sm);box-shadow:var(--shadow-sm);}
+        body.is-admin .sucursal-card-title{color:var(--text);font-size:14px;}
+        body.is-admin .sucursal-card-info{font-size:12px;color:var(--muted);}
+        body.is-admin .unit-badge{background:var(--badge-cam-bg);color:var(--badge-cam-text);border-radius:6px;}
+        body.is-admin .insumo-detail{font-size:11px;color:var(--muted);}
+        body.is-admin .tag-packaging{background:#ede9fe;color:#5b21b6;}
+        body.is-admin .tag-descartables{background:var(--badge-ent-bg);color:var(--badge-ent-text);}
+        body.is-admin .tag-lacteos{background:var(--badge-pend-bg);color:var(--badge-pend-text);}
+
+        /* Tabla */
+        body.is-admin table th{background:var(--bg);color:var(--text);font-size:12px;font-weight:600;}
+        body.is-admin table td{font-size:13px;}
+        body.is-admin tr:hover{background:#f9fafb;}
+
+        /* Modal */
+        body.is-admin .modal{border-radius:var(--r-lg) var(--r-lg) 0 0;}
+        body.is-admin .modal-title{font-size:16px;font-weight:700;color:var(--text);}
+        body.is-admin .modal-header{border-bottom-color:var(--border);}
+
+        /* Quick actions del dashboard original (ocultos en admin) */
+        body.is-admin .quick-action-btn{border-radius:var(--r-sm);border-color:var(--border);}
+        body.is-admin .product-chip{border-radius:var(--r-sm);}
+        body.is-admin .product-chip.selected{border-color:#2563eb;}
+        body.is-admin .checklist-item{border-radius:var(--r-sm);}
+        body.is-admin .search-box .form-input{background:var(--card);}
     </style>
 </head>
 <body>
