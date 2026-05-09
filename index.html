@@ -689,7 +689,7 @@ function showSyncStatus(status) {
 
 function setupModalClose() {
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
-        if (overlay.id === 'newOrderModal') return;
+        if (overlay.id === 'newOrderModal' || overlay.id === 'newInsumoModal') return;
         overlay.addEventListener('click', e => {
             if (e.target === overlay) overlay.classList.remove('active');
         });
