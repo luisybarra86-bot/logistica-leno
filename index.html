@@ -710,6 +710,24 @@
           <div class="metric-card metric-entregados" style="cursor:pointer" onclick="irALista('entregado')"><div class="metric-icon">✅</div><div class="metric-info"><span class="metric-number" id="pedidos-entregados">0</span><span class="metric-label">Entregados</span><span class="metric-trend trend-up" id="trend-entregados">0% exito</span></div></div>
           <div class="metric-card metric-stock" style="cursor:pointer" onclick="irASeccion('stock')"><div class="metric-icon">📦</div><div class="metric-info"><span class="metric-number" id="stock-alertas">0</span><span class="metric-label">Stock bajo</span><span class="metric-badge badge-warning" id="badge-stock" style="display:none">Revisar</span></div></div>
         </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">
+          <div onclick="irASeccion('insumos')" style="background:var(--card);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow-sm);cursor:pointer;text-align:center;transition:transform 0.2s,box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow='var(--shadow-sm)'">
+            <div style="font-size:26px;margin-bottom:6px;">🧴</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text);">Insumos</div>
+          </div>
+          <div onclick="irASeccion('stock')" style="background:var(--card);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow-sm);cursor:pointer;text-align:center;transition:transform 0.2s,box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow='var(--shadow-sm)'">
+            <div style="font-size:26px;margin-bottom:6px;">📦</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text);">Stock</div>
+          </div>
+          <div onclick="irASeccion('reportes')" style="background:var(--card);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow-sm);cursor:pointer;text-align:center;transition:transform 0.2s,box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow='var(--shadow-sm)'">
+            <div style="font-size:26px;margin-bottom:6px;">📊</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text);">Reportes</div>
+          </div>
+          <div onclick="irASeccion('config')" style="background:var(--card);border-radius:var(--r-md);padding:16px;box-shadow:var(--shadow-sm);cursor:pointer;text-align:center;transition:transform 0.2s,box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)'" onmouseout="this.style.transform='';this.style.boxShadow='var(--shadow-sm)'">
+            <div style="font-size:26px;margin-bottom:6px;">⚙️</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text);">Config</div>
+          </div>
+        </div>
         <div class="chart-section"><h3>Pedidos ultimos 7 dias</h3><div class="bar-chart" id="chart-semanal"></div></div>
         <div class="recent-orders">
           <div class="section-header">
