@@ -243,7 +243,12 @@
         @media (min-width: 768px) { .modal.modal-pedido { border-radius: 16px; } .pedido-header { border-radius: 16px 16px 0 0; } }
 
         /* === ADMIN — ESTILO NUEVO EN SECCIONES SECUNDARIAS === */
-        body.is-admin .header{background:#2563eb;}
+        /* Header admin — diseño limpio */
+        body.is-admin .header{background:var(--card);color:var(--text);box-shadow:0 1px 0 var(--border);}
+        body.is-admin .header h1{color:var(--text);font-size:16px;font-weight:800;letter-spacing:-0.3px;}
+        body.is-admin .header-sub{color:var(--muted);font-size:12px;font-weight:500;opacity:1;}
+        body.is-admin .header .role-badge.badge-admin{background:#ede9fe;color:#5b21b6;}
+        body.is-admin .header > div:last-child{color:var(--muted);}
         body.is-admin .content{background:var(--bg);}
 
         /* Cards */
@@ -316,7 +321,7 @@
     <div class="offline-banner" id="offlineBanner">⚠️ Sin conexión - Los cambios se guardarán localmente</div>
     <div class="header">
         <div>
-            <h1>🚚 Logística Pro <span id="roleBadge" class="role-badge"></span></h1>
+            <h1>Logística Leno <span id="roleBadge" class="role-badge"></span></h1>
             <div class="header-sub" id="headerSub">Online • Sincronizado</div>
         </div>
         <div style="font-size: 1.4rem; cursor: pointer;" onclick="showSection('config')">⚙️</div>
@@ -683,8 +688,12 @@
     <div id="admin-panel">
       <div class="admin-dashboard" id="admin-dashboard">
         <div class="dashboard-header">
-          <div><h1>Panel de Control</h1><p class="fecha" id="fecha-hoy"></p></div>
-          <button class="btn-refresh" id="btn-sync" onclick="syncData()">Sincronizar</button>
+          <div>
+            <p style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Logística Leno</p>
+            <h1>Panel de Control</h1>
+            <p class="fecha" id="fecha-hoy"></p>
+          </div>
+          <button class="btn-refresh" id="btn-sync" onclick="syncData()">↻ Sync</button>
         </div>
         <div class="metrics-grid">
           <div class="metric-card metric-pedidos" style="cursor:pointer" onclick="irALista('hoy')"><div class="metric-icon">📋</div><div class="metric-info"><span class="metric-number" id="pedidos-hoy">0</span><span class="metric-label">Pedidos hoy</span><span class="metric-trend trend-up" id="trend-pedidos">0% vs ayer</span></div></div>
@@ -2468,6 +2477,8 @@ function navigate(seccion,el){
   const header=document.querySelector('.header');
   const content=document.querySelector('.content');
   const backBtn=document.getElementById('admin-back-btn');
+  const headerSub=document.getElementById('headerSub');
+  const sectionNames={insumos:'Insumos',stock:'Stock',reportes:'Reportes',config:'Configuración'};
   if(seccion==='pedidos'){
     panel.style.display='block';header.style.display='';content.style.display='';
     if(backBtn)backBtn.style.display='none';
@@ -2475,6 +2486,7 @@ function navigate(seccion,el){
   }else{
     panel.style.display='none';header.style.display='flex';content.style.display='block';
     if(backBtn)backBtn.style.display='block';
+    if(headerSub)headerSub.textContent=sectionNames[seccion]||seccion;
     const map={insumos:'insumos',stock:'stock',reportes:'reports',config:'config'};
     if(map[seccion])showSection(map[seccion]);
   }
