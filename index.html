@@ -48,6 +48,9 @@
         body.is-admin #main-bottom-nav{display:none;}
         #admin-panel{display:none;}
         body.is-admin #admin-panel{display:block;}
+        #admin-nav{display:none;}
+        body.is-admin #admin-nav{display:flex;}
+        @media(min-width:768px){#admin-nav{display:none!important;}}
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -635,14 +638,14 @@
           <div class="orders-list" id="orders-list"></div>
         </div>
       </div>
-      <nav class="admin-bottom-nav">
-        <button class="nav-item active" onclick="navigate('pedidos',this)"><span class="nav-icon">📋</span><span class="nav-label">Pedidos</span><span class="nav-badge" id="nav-badge-pedidos" style="display:none">0</span></button>
-        <button class="nav-item" onclick="navigate('stock',this)"><span class="nav-icon">📦</span><span class="nav-label">Stock</span></button>
-        <div class="nav-fab-wrapper"><button class="nav-fab" onclick="openNewOrder()">+</button></div>
-        <button class="nav-item" onclick="navigate('reportes',this)"><span class="nav-icon">📊</span><span class="nav-label">Reportes</span></button>
-        <button class="nav-item" onclick="navigate('config',this)"><span class="nav-icon">⚙️</span><span class="nav-label">Mas</span></button>
-      </nav>
     </div>
+    <nav class="admin-bottom-nav" id="admin-nav">
+      <button class="nav-item active" onclick="navigate('pedidos',this)"><span class="nav-icon">📋</span><span class="nav-label">Pedidos</span><span class="nav-badge" id="nav-badge-pedidos" style="display:none">0</span></button>
+      <button class="nav-item" onclick="navigate('stock',this)"><span class="nav-icon">📦</span><span class="nav-label">Stock</span></button>
+      <div class="nav-fab-wrapper"><button class="nav-fab" onclick="openNewOrder()">+</button></div>
+      <button class="nav-item" onclick="navigate('reportes',this)"><span class="nav-icon">📊</span><span class="nav-label">Reportes</span></button>
+      <button class="nav-item" onclick="navigate('config',this)"><span class="nav-icon">⚙️</span><span class="nav-label">Mas</span></button>
+    </nav>
 
 <script>
 // ==================== SUPABASE CONFIG ====================
@@ -2291,35 +2294,56 @@ async function syncData(silencioso=false){
   if(!btn||!dash)return;
   if(!silencioso){btn.classList.add('syncing');btn.innerHTML='<span class="sync-spinner">↻</span> Sincronizando...';dash.classList.add('syncing');}
   try{
-    // REEMPLAZAR: const pedidos=await pb.collection('pedidos').getFullList({sort:'-created'});
-    // REEMPLAZAR: const stock=await pb.collection('stock').getFullList();
-    await new Promise(r=>setTimeout(r,600));
-    const demo=generarDatosDemo();pedidosData=demo.pedidos;stockData=demo.stock;historialData=demo.historial;
-    actualizarMetricas();generarGrafico();renderizarPedidos();actualizarBadgeNav();
+    // Mostrar datos locales inmediatamente si hay
+    if(DB.pedidos.length>0){mapearDatos();actualizarMetricas();generarGrafico();renderizarPedidos();actualizarBadgeNav();}
+    // Sincronizar datos frescos desde Supabase
+    await syncWithSupabase();
+    mapearDatos();actualizarMetricas();generarGrafico();renderizarPedidos();actualizarBadgeNav();
     if(!silencioso)mostrarToast('Datos actualizados');
   }catch(e){console.error(e);if(!silencioso)mostrarToast('Error al sincronizar');}
   finally{if(!silencioso){btn.classList.remove('syncing');btn.innerHTML='Sincronizar';dash.classList.remove('syncing');}}
+}
+
+function mapearDatos(){
+  const statusMap={'en_ruta':'camino','fallido':'cancelado','parcial':'cancelado'};
+  pedidosData=DB.pedidos.map(p=>{
+    const suc=DB.sucursales.find(s=>s.id===(p.sucursal_id||p.sucursalId));
+    const rep=DB.repartidores.find(r=>r.id===(p.repartidor_id||p.repartidorId));
+    const ts=p.creado||p.created_at||new Date().toISOString();
+    return{id:String(p.id),_rawId:p.id,numero:p.id,status:statusMap[p.estado]||p.estado||'pendiente',
+      sucursal:suc?.nombre||'Sin sucursal',direccion:suc?.direccion||suc?.nombre||'',
+      repartidor:rep?.nombre||'Sin asignar',prioridad:'normal',created:ts};
+  });
+  stockData=DB.stock.map(s=>{
+    const prod=DB.productos.find(p=>p.id===(s.producto_id||s.productoId));
+    return{id:s.id,cantidad:s.cantidad||0,minimo:prod?.stock_minimo||0};
+  });
+  const hoy=new Date();
+  historialData=Array.from({length:7},(_,i)=>{
+    const d=new Date(hoy);d.setDate(d.getDate()-(6-i));const dStr=d.toDateString();
+    return DB.pedidos.filter(p=>new Date(p.creado||p.created_at||0).toDateString()===dStr).length;
+  });
 }
 
 function actualizarMetricas(){
   const hoyStr=new Date().toDateString();
   const hoy=pedidosData.filter(p=>new Date(p.created).toDateString()===hoyStr).length;
   const pend=pedidosData.filter(p=>p.status==='pendiente').length;
-  const urg=pedidosData.filter(p=>p.status==='pendiente'&&p.prioridad==='urgente').length;
   const ent=pedidosData.filter(p=>p.status==='entregado').length;
   const totalComp=ent+pedidosData.filter(p=>p.status==='cancelado').length;
   const exito=totalComp>0?Math.round((ent/totalComp)*100):0;
   const stockB=stockData.filter(s=>s.cantidad<s.minimo).length;
   animarNumero('pedidos-hoy',hoy);animarNumero('pedidos-pendientes',pend);animarNumero('pedidos-entregados',ent);animarNumero('stock-alertas',stockB);
-  const bu=document.getElementById('badge-urgentes');if(bu){if(urg>0){bu.textContent=urg+' urgente'+(urg>1?'s':'');bu.style.display='inline-block';}else{bu.style.display='none';}}
+  const bu=document.getElementById('badge-urgentes');if(bu)bu.style.display='none';
   const bs=document.getElementById('badge-stock');if(bs)bs.style.display=stockB>0?'inline-block':'none';
-  const tp=document.getElementById('trend-pedidos');if(tp)tp.textContent='12% vs ayer';
-  const te=document.getElementById('trend-entregados');if(te)te.textContent=exito+'% exito';
+  const tp=document.getElementById('trend-pedidos');if(tp)tp.textContent=pend>0?pend+' sin despachar':'Al día';
+  const te=document.getElementById('trend-entregados');if(te)te.textContent=exito+'% éxito';
 }
 
-function animarNumero(id,final,dur=800){
+function animarNumero(id,final,dur=600){
   const el=document.getElementById(id);if(!el)return;
   const ini=parseInt(el.textContent)||0,diff=final-ini,inc=diff/(dur/16);let cur=ini;
+  if(diff===0)return;
   const t=setInterval(()=>{cur+=inc;if((inc>0&&cur>=final)||(inc<0&&cur<=final)){el.textContent=final;clearInterval(t);}else el.textContent=Math.floor(cur);},16);
 }
 
@@ -2334,27 +2358,42 @@ function generarGrafico(){
 function renderizarPedidos(filtro='todos'){
   const lista=document.getElementById('orders-list');if(!lista)return;
   let p=pedidosData;if(filtro!=='todos')p=p.filter(x=>x.status===filtro);
-  p.sort((a,b)=>new Date(b.created)-new Date(a.created));p=p.slice(0,10);
+  p.sort((a,b)=>new Date(b.created)-new Date(a.created));p=p.slice(0,20);
   if(!p.length){lista.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">📭</div><div>Sin pedidos</div></div>';return;}
   const cfg={pendiente:{c:'status-pendiente',b:'badge-pendiente',t:'Pendiente'},camino:{c:'status-camino',b:'badge-camino',t:'En camino'},entregado:{c:'status-entregado',b:'badge-entregado',t:'Entregado'},cancelado:{c:'status-cancelado',b:'badge-cancelado',t:'Cancelado'}};
   lista.innerHTML=p.map(x=>{
     const c=cfg[x.status]||cfg.pendiente,hora=new Date(x.created).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-    return'<div class="order-item" data-status="'+x.status+'" onclick="verPedido(\''+x.id+'\')"><div class="order-status-indicator '+c.c+'"></div><div class="order-info"><strong>#'+(x.numero||x.id.slice(-4))+' - '+(x.sucursal||'Sucursal')+'</strong><span>📍 '+(x.direccion||'Sin direccion')+'</span><span>👤 '+(x.repartidor||'Sin asignar')+'</span></div><div class="order-meta"><span class="order-time">'+hora+'</span><span class="order-badge '+c.b+'">'+c.t+'</span></div></div>';
+    return'<div class="order-item" onclick="verPedido(\''+x.id+'\')"><div class="order-status-indicator '+c.c+'"></div><div class="order-info"><strong>#'+x.numero+' — '+x.sucursal+'</strong><span>👤 '+x.repartidor+'</span></div><div class="order-meta"><span class="order-time">'+hora+'</span><span class="order-badge '+c.b+'">'+c.t+'</span></div></div>';
   }).join('');
 }
 
 function filterOrders(filtro){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.filter===filtro));
+  document.querySelectorAll('#admin-panel .tab').forEach(t=>t.classList.toggle('active',t.dataset.filter===filtro));
   renderizarPedidos(filtro);
 }
 
 function navigate(seccion,el){
-  document.querySelectorAll('.admin-bottom-nav .nav-item').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('#admin-nav .nav-item').forEach(x=>x.classList.remove('active'));
   if(el)el.classList.add('active');
-  console.log('Admin nav:',seccion);
+  const panel=document.getElementById('admin-panel');
+  const header=document.querySelector('.header');
+  const content=document.querySelector('.content');
+  if(seccion==='pedidos'){
+    panel.style.display='block';header.style.display='';content.style.display='';
+    syncData(true);
+  }else{
+    panel.style.display='none';header.style.display='flex';content.style.display='block';
+    const map={stock:'stock',reportes:'reports',config:'config'};
+    if(map[seccion])showSection(map[seccion]);
+  }
 }
-function openNewOrder(){if(typeof showModal==='function')showModal('newOrderModal');}
-function verPedido(id){console.log('Ver pedido:',id);}
+
+function openNewOrder(){showModal('newOrderModal');}
+
+function verPedido(id){
+  const p=pedidosData.find(x=>x.id===String(id));
+  if(p)showOrderDetail(p._rawId);
+}
 
 function actualizarBadgeNav(){
   const pend=pedidosData.filter(p=>p.status==='pendiente').length,badge=document.getElementById('nav-badge-pedidos');
@@ -2362,19 +2401,7 @@ function actualizarBadgeNav(){
   if(pend>0){badge.textContent=pend>99?'99+':pend;badge.style.display='flex';}else{badge.style.display='none';}
 }
 
-function mostrarToast(msg){
-  const t=document.getElementById('toast');if(!t)return;
-  t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);
-}
-
-function generarDatosDemo(){
-  const est=['pendiente','camino','entregado','cancelado'],suc=['Centro','Norte','Sur','Oeste'],dir=['Av. Corrientes 1234','Av. Libertador 567','Av. Santa Fe 890','Av. Cordoba 432'],rep=['Juan Perez','Maria Lopez','Carlos Ruiz','Ana Garcia'];
-  return{
-    pedidos:Array.from({length:15},(_,i)=>({id:'ped_'+i,numero:1024+i,status:est[Math.floor(Math.random()*(i<5?2:4))],sucursal:'Sucursal '+suc[Math.floor(Math.random()*suc.length)],direccion:dir[Math.floor(Math.random()*dir.length)],repartidor:rep[Math.floor(Math.random()*rep.length)],prioridad:Math.random()>0.7?'urgente':'normal',created:new Date(Date.now()-Math.random()*86400000*3).toISOString()})),
-    stock:Array.from({length:20},(_,i)=>({id:'stock_'+i,nombre:'Insumo '+(i+1),cantidad:Math.floor(Math.random()*100),minimo:20})),
-    historial:[4,7,9,5,10,3,6]
-  };
-}
+function mostrarToast(msg){showToast(msg);}
 
 // Init
 init();
