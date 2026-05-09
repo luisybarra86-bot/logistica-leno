@@ -622,7 +622,7 @@
           <div class="metric-card metric-pedidos" style="cursor:pointer" onclick="irALista('hoy')"><div class="metric-icon">📋</div><div class="metric-info"><span class="metric-number" id="pedidos-hoy">0</span><span class="metric-label">Pedidos hoy</span><span class="metric-trend trend-up" id="trend-pedidos">0% vs ayer</span></div></div>
           <div class="metric-card metric-pendientes" style="cursor:pointer" onclick="irALista('pendiente')"><div class="metric-icon">⏳</div><div class="metric-info"><span class="metric-number" id="pedidos-pendientes">0</span><span class="metric-label">Pendientes</span><span class="metric-badge badge-urgente" id="badge-urgentes" style="display:none">0 urgentes</span></div></div>
           <div class="metric-card metric-entregados" style="cursor:pointer" onclick="irALista('entregado')"><div class="metric-icon">✅</div><div class="metric-info"><span class="metric-number" id="pedidos-entregados">0</span><span class="metric-label">Entregados</span><span class="metric-trend trend-up" id="trend-entregados">0% exito</span></div></div>
-          <div class="metric-card metric-stock" style="cursor:pointer" onclick="navigate('stock', document.querySelector('#admin-nav .nav-item:nth-child(2)'))"><div class="metric-icon">📦</div><div class="metric-info"><span class="metric-number" id="stock-alertas">0</span><span class="metric-label">Stock bajo</span><span class="metric-badge badge-warning" id="badge-stock" style="display:none">Revisar</span></div></div>
+          <div class="metric-card metric-stock" style="cursor:pointer" onclick="irASeccion('stock')"><div class="metric-icon">📦</div><div class="metric-info"><span class="metric-number" id="stock-alertas">0</span><span class="metric-label">Stock bajo</span><span class="metric-badge badge-warning" id="badge-stock" style="display:none">Revisar</span></div></div>
         </div>
         <div class="chart-section"><h3>Pedidos ultimos 7 dias</h3><div class="bar-chart" id="chart-semanal"></div></div>
         <div class="recent-orders">
@@ -641,7 +641,7 @@
     </div>
     <nav class="admin-bottom-nav" id="admin-nav">
       <button class="nav-item active" onclick="navigate('pedidos',this)"><span class="nav-icon">📋</span><span class="nav-label">Pedidos</span><span class="nav-badge" id="nav-badge-pedidos" style="display:none">0</span></button>
-      <button class="nav-item" onclick="navigate('stock',this)"><span class="nav-icon">📦</span><span class="nav-label">Stock</span></button>
+      <button class="nav-item" onclick="navigate('insumos',this)"><span class="nav-icon">🧴</span><span class="nav-label">Insumos</span></button>
       <div class="nav-fab-wrapper"><button class="nav-fab" onclick="openNewOrder()">+</button></div>
       <button class="nav-item" onclick="navigate('reportes',this)"><span class="nav-icon">📊</span><span class="nav-label">Reportes</span></button>
       <button class="nav-item" onclick="navigate('config',this)"><span class="nav-icon">⚙️</span><span class="nav-label">Mas</span></button>
@@ -2402,12 +2402,13 @@ function navigate(seccion,el){
     syncData(true);
   }else{
     panel.style.display='none';header.style.display='flex';content.style.display='block';
-    const map={stock:'stock',reportes:'reports',config:'config'};
+    const map={insumos:'insumos',stock:'stock',reportes:'reports',config:'config'};
     if(map[seccion])showSection(map[seccion]);
   }
 }
 
 function openNewOrder(){showModal('newOrderModal');}
+function irASeccion(seccion){navigate(seccion,null);}
 
 function verPedido(id){
   const p=pedidosData.find(x=>x.id===String(id));
