@@ -199,6 +199,13 @@
         .unit-badge { display: inline-block; background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
         .insumo-detail { font-size: 0.82rem; color: var(--gray); margin-top: 3px; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        /* Modal Nuevo Pedido */
+        .modal.modal-pedido { padding: 0; overflow-y: hidden; display: flex; flex-direction: column; }
+        .pedido-header { background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%); padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 20px 20px 0 0; flex-shrink: 0; }
+        .pedido-body { padding: 16px; overflow-y: auto; flex: 1; min-height: 0; }
+        .pedido-insumos-box { background: #f0f2ff; border: 2px solid #e8eaf6; border-radius: 14px; padding: 14px; }
+        .pedido-footer { padding: 12px 16px 22px; border-top: 2px solid #f0f0f0; flex-shrink: 0; background: white; }
+        @media (min-width: 768px) { .modal.modal-pedido { border-radius: 16px; } .pedido-header { border-radius: 16px 16px 0 0; } }
     </style>
 </head>
 <body>
@@ -336,23 +343,36 @@
 
     <!-- MODALS -->
     <div class="modal-overlay" id="newOrderModal">
-        <div class="modal">
-            <div class="modal-header"><span class="modal-title">📋 Crear Nuevo Pedido</span><button class="modal-close" onclick="closeModal('newOrderModal')">&times;</button></div>
-            <div class="form-group"><label class="form-label">🏪 Sucursal *</label><select class="form-select" id="orderSucursal"><option value="">Seleccionar...</option></select></div>
-            <div class="form-group"><label class="form-label">👤 Repartidor</label><select class="form-select" id="orderRepartidor"><option value="">Sin asignar</option></select></div>
-            <div class="form-group"><label class="form-label">📅 Fecha</label><input type="date" class="form-input" id="orderDate"></div>
-            <div style="background: var(--light-gray); border-radius: 12px; padding: 16px; margin-bottom: 18px;">
-                <label class="form-label" style="margin-bottom: 12px;">📦 Seleccionar Productos</label>
-                <p style="font-size: 0.85rem; color: var(--gray); margin-bottom: 12px;">Tocá los productos para agregarlos</p>
-                <div class="product-grid" id="productGrid"></div>
-                <div id="selectedProductsList" style="margin-top: 14px;"></div>
+        <div class="modal modal-pedido">
+            <div class="pedido-header">
+                <div>
+                    <div style="font-size: 1.2rem; font-weight: 800; color: white;">📋 Nuevo Pedido</div>
+                    <div style="font-size: 0.78rem; color: rgba(255,255,255,0.75); margin-top: 2px;">Completá los datos y elegí insumos</div>
+                </div>
+                <button class="modal-close" style="color: white; background: rgba(255,255,255,0.15);" onclick="closeModal('newOrderModal')">&times;</button>
             </div>
-            <div style="background: #e8f5e9; border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; display: none;" id="orderSummary">
-                <div style="font-weight: 700; color: var(--success); margin-bottom: 4px;">✅ Resumen</div>
-                <div id="orderSummaryContent" style="font-size: 0.9rem; color: #555;"></div>
+            <div class="pedido-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                    <div><label class="form-label">🏪 Sucursal *</label><select class="form-select" id="orderSucursal"><option value="">Seleccionar...</option></select></div>
+                    <div><label class="form-label">📅 Fecha</label><input type="date" class="form-input" id="orderDate"></div>
+                </div>
+                <div style="margin-bottom: 16px;"><label class="form-label">👤 Repartidor</label><select class="form-select" id="orderRepartidor"><option value="">Sin asignar</option></select></div>
+                <div class="pedido-insumos-box">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label class="form-label" style="margin-bottom: 0;">📦 Insumos</label>
+                        <span id="pedidoCountBadge" style="display: none; background: var(--primary); color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;"></span>
+                    </div>
+                    <input type="search" id="productSearch" placeholder="🔍 Buscar insumo..." oninput="filterProductGrid()" style="width: 100%; padding: 10px 14px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 0.95rem; margin-bottom: 12px; box-sizing: border-box; outline: none; background: white; font-family: inherit;">
+                    <div class="product-grid" id="productGrid"></div>
+                    <div id="selectedProductsList" style="margin-top: 10px;"></div>
+                </div>
+                <div style="background: #e8f5e9; border-radius: 10px; padding: 12px 16px; margin-top: 12px; display: none;" id="orderSummary">
+                    <div id="orderSummaryContent" style="font-size: 0.9rem; color: #2e7d32; font-weight: 600;"></div>
+                </div>
             </div>
-            <button class="btn btn-success" style="font-size: 1.1rem; padding: 16px;" onclick="saveOrder()">✅ CREAR PEDIDO</button>
-            <button class="btn btn-secondary" onclick="closeModal('newOrderModal')">Cancelar</button>
+            <div class="pedido-footer">
+                <button class="btn btn-success" style="margin-bottom: 0; font-size: 1.05rem; padding: 16px;" onclick="saveOrder()">✅ CREAR PEDIDO</button>
+            </div>
         </div>
     </div>
 
@@ -669,6 +689,7 @@ function showSyncStatus(status) {
 
 function setupModalClose() {
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        if (overlay.id === 'newOrderModal') return;
         overlay.addEventListener('click', e => {
             if (e.target === overlay) overlay.classList.remove('active');
         });
@@ -1120,7 +1141,9 @@ function populateSelects() {
 function renderProductGrid() {
     const grid = document.getElementById('productGrid');
     if (!grid) return;
-    grid.innerHTML = DB.productos.map(p => {
+    const search = (document.getElementById('productSearch')?.value || '').toLowerCase();
+    const filtered = DB.productos.filter(p => !search || p.nombre.toLowerCase().includes(search));
+    grid.innerHTML = filtered.map(p => {
         const stock = DB.stock.find(s => s.producto_id === p.id || s.productoId === p.id);
         const cantidad = stock?.cantidad || 0;
         const selected = selectedProductsForOrder[p.id] || 0;
@@ -1133,6 +1156,10 @@ function renderProductGrid() {
             </div>
         `;
     }).join('');
+}
+
+function filterProductGrid() {
+    renderProductGrid();
 }
 
 function toggleProductSelection(productId) {
@@ -1164,7 +1191,7 @@ function renderSelectedProductsList() {
                     <div style="flex: 2; font-weight: 600;">${prod?.nombre}</div>
                     <div style="display: flex; align-items: center; background: white; border: 2px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
                         <button style="border: none; background: var(--light-gray); padding: 6px 12px; font-size: 1rem; cursor: pointer;" onclick="event.stopPropagation(); changeProductQty(${pid}, -1)">−</button>
-                        <input type="text" value="${qty}" readonly style="border: none; width: 40px; text-align: center; font-weight: 700;">
+                        <input type="number" inputmode="numeric" min="0" value="${qty}" style="border: none; width: 50px; text-align: center; font-weight: 700; font-size: 1rem;" onclick="event.stopPropagation(); this.select();" onchange="event.stopPropagation(); setProductQty(${pid}, this.value)">
                         <button style="border: none; background: var(--light-gray); padding: 6px 12px; font-size: 1rem; cursor: pointer;" onclick="event.stopPropagation(); changeProductQty(${pid}, 1)">+</button>
                     </div>
                     <button style="border: none; background: var(--danger); color: white; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem;" onclick="event.stopPropagation(); removeProduct(${pid})">🗑️</button>
@@ -1188,6 +1215,19 @@ function changeProductQty(productId, delta) {
     updateOrderSummary();
 }
 
+function setProductQty(productId, valor) {
+    const stock = DB.stock.find(s => s.producto_id === productId || s.productoId === productId);
+    const disponible = stock?.cantidad || 0;
+    const nuevo = parseInt(valor) || 0;
+    if (nuevo < 0) return;
+    if (nuevo > disponible) { showToast('❌ Stock insuficiente'); return; }
+    if (nuevo === 0) { delete selectedProductsForOrder[productId]; }
+    else { selectedProductsForOrder[productId] = nuevo; }
+    renderProductGrid();
+    renderSelectedProductsList();
+    updateOrderSummary();
+}
+
 function removeProduct(productId) {
     delete selectedProductsForOrder[productId];
     renderProductGrid();
@@ -1199,10 +1239,19 @@ function updateOrderSummary() {
     const selected = Object.entries(selectedProductsForOrder).filter(([k, v]) => v > 0);
     const summaryDiv = document.getElementById('orderSummary');
     const summaryContent = document.getElementById('orderSummaryContent');
-    if (selected.length === 0) { summaryDiv.style.display = 'none'; return; }
+    const badge = document.getElementById('pedidoCountBadge');
+    if (selected.length === 0) {
+        summaryDiv.style.display = 'none';
+        if (badge) badge.style.display = 'none';
+        return;
+    }
     const totalItems = selected.reduce((sum, [pid, qty]) => sum + qty, 0);
     summaryDiv.style.display = 'block';
-    summaryContent.innerHTML = `${selected.length} productos • ${totalItems} unidades totales`;
+    summaryContent.innerHTML = `✅ ${selected.length} producto${selected.length !== 1 ? 's' : ''} · ${totalItems} unidades en total`;
+    if (badge) {
+        badge.textContent = `${selected.length} sel.`;
+        badge.style.display = 'inline-block';
+    }
 }
 
 async function saveOrder() {
