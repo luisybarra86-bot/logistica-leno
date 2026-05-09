@@ -313,7 +313,8 @@
         body.is-admin .product-chip{border-radius:var(--r-sm);}
         body.is-admin .product-chip.selected{border-color:#2563eb;}
         body.is-admin .checklist-item{border-radius:var(--r-sm);}
-        body.is-admin .search-box .form-input{background:var(--card);}
+        body.is-admin .search-box .form-input{background:var(--card);padding-left:14px;}
+        body.is-admin .search-box .search-icon{display:none;}
     </style>
 </head>
 <body>
@@ -689,8 +690,7 @@
       <div class="admin-dashboard" id="admin-dashboard">
         <div class="dashboard-header">
           <div>
-            <p style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Logística Leno</p>
-            <h1>Panel de Control</h1>
+            <h1 style="font-size:26px;font-weight:800;letter-spacing:-0.5px;">Logística Leno</h1>
             <p class="fecha" id="fecha-hoy"></p>
           </div>
           <button class="btn-refresh" id="btn-sync" onclick="syncData()">↻ Sync</button>
