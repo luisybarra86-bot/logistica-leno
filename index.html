@@ -1538,8 +1538,8 @@ function showOrderDetail(orderId) {
     if (order.entregado) {
         content += `<div style="background: var(--light-gray); padding: 14px; border-radius: 10px; margin-bottom: 16px;"><div style="font-weight: 700; color: var(--primary); margin-bottom: 6px;">🕐 Entrega realizada</div><div style="color: #555; font-size: 0.95rem;">${new Date(order.entregado).toLocaleString('es-AR')}</div></div>`;
     }
-    if (order.observaciones) {
-        content += `<div style="background: #fff8e1; border: 2px solid #ffe082; padding: 14px; border-radius: 10px; margin-bottom: 16px;"><div style="font-weight: 700; color: #f57f17; margin-bottom: 6px;">📝 Observaciones:</div><div style="color: #555; font-size: 0.95rem; line-height: 1.5;">${order.observaciones}</div></div>`;
+    if (cleanObs(order.observaciones)) {
+        content += `<div style="background: #fff8e1; border: 2px solid #ffe082; padding: 14px; border-radius: 10px; margin-bottom: 16px;"><div style="font-weight: 700; color: #f57f17; margin-bottom: 6px;">📝 Observaciones:</div><div style="color: #555; font-size: 0.95rem; line-height: 1.5;">${cleanObs(order.observaciones)}</div></div>`;
     }
     if (order.foto_url || order.foto) {
         const foto = order.foto_url || order.foto;
@@ -1798,7 +1798,7 @@ async function sendTelegramNotification(order, estado) {
         msg += `${icon} ${escapeHtml(prod?.nombre || 'Producto')}: ${item.cantidad}${obs}\n`;
     });
 
-    if (order.observaciones) msg += `\n📝 <b>Observaciones:</b>\n${escapeHtml(order.observaciones)}`;
+    if (cleanObs(order.observaciones)) msg += `\n📝 <b>Observaciones:</b>\n${escapeHtml(cleanObs(order.observaciones))}`;
 
     try {
         const res = await fetch(`https://api.telegram.org/bot${ADMIN_TELEGRAM_TOKEN}/sendMessage`, {
@@ -1813,6 +1813,17 @@ async function sendTelegramNotification(order, estado) {
 function escapeHtml(text) {
     if (!text) return '';
     return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function cleanObs(obs) {
+    if (!obs) return '';
+    try {
+        if (obs.startsWith('{')) {
+            const meta = JSON.parse(obs);
+            return meta.obs || '';
+        }
+    } catch(e) {}
+    return obs;
 }
 
 function queueTelegram(order, estado) {
@@ -1986,7 +1997,7 @@ function showReport(type) {
     if (type === 'failed') {
         const failed = DB.pedidos.filter(p => p.estado === 'fallido' || p.estado === 'parcial').sort((a, b) => new Date(b.creado || 0) - new Date(a.creado || 0));
         if (failed.length === 0) { container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><div>Sin fallas registradas</div></div>'; return; }
-        container.innerHTML = `<div class="table-responsive"><table><thead><tr><th>Fecha</th><th>Sucursal</th><th>Estado</th><th>Problemas</th></tr></thead><tbody>${failed.map(order => { const suc = DB.sucursales.find(s => s.id === order.sucursalId || s.id === order.sucursal_id); const probs = Object.entries(order.checklist || {}).filter(([k, v]) => !v.entregado).map(([k, v]) => { const prod = DB.productos.find(p => p.id == k); return `${prod?.nombre}: ${v.observacion || 'No entregado'}`; }).join('; '); return `<tr><td>${order.fecha}</td><td><strong>${suc?.nombre || 'N/A'}</strong></td><td><span class="badge ${order.estado === 'fallido' ? 'badge-failed' : 'badge-partial'}">${order.estado === 'fallido' ? 'Fallido' : 'Parcial'}</span></td><td style="font-size: 0.85rem;">${probs || order.observaciones || 'Sin detalle'}</td></tr>`; }).join('')}</tbody></table></div>`;
+        container.innerHTML = `<div class="table-responsive"><table><thead><tr><th>Fecha</th><th>Sucursal</th><th>Estado</th><th>Problemas</th></tr></thead><tbody>${failed.map(order => { const suc = DB.sucursales.find(s => s.id === order.sucursalId || s.id === order.sucursal_id); const probs = Object.entries(order.checklist || {}).filter(([k, v]) => !v.entregado).map(([k, v]) => { const prod = DB.productos.find(p => p.id == k); return `${prod?.nombre}: ${v.observacion || 'No entregado'}`; }).join('; '); return `<tr><td>${order.fecha}</td><td><strong>${suc?.nombre || 'N/A'}</strong></td><td><span class="badge ${order.estado === 'fallido' ? 'badge-failed' : 'badge-partial'}">${order.estado === 'fallido' ? 'Fallido' : 'Parcial'}</span></td><td style="font-size: 0.85rem;">${probs || cleanObs(order.observaciones) || 'Sin detalle'}</td></tr>`; }).join('')}</tbody></table></div>`;
     } else if (type === 'daily') {
         const today = new Date().toISOString().split('T')[0];
         const t = DB.pedidos.filter(p => p.fecha === today);
@@ -2201,7 +2212,7 @@ function openEditOrder(orderId) {
     document.getElementById('editOrderRepartidor').value = order.repartidor_id || order.repartidorId || '';
     document.getElementById('editOrderDate').value = order.fecha || '';
     document.getElementById('editOrderEstado').value = order.estado || 'pendiente';
-    document.getElementById('editOrderObs').value = order.observaciones || '';
+    document.getElementById('editOrderObs').value = cleanObs(order.observaciones) || '';
     closeModal('orderDetailModal');
     showModal('editOrderModal');
 }
