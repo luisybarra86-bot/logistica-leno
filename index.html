@@ -1698,8 +1698,27 @@ async function finalizeDelivery(estado) {
         foto_url: fotoData
     };
 
+    // Capturar PB IDs ANTES de que Supabase sobreescriba observaciones
+    let pbIds = [];
+    try {
+        const obsRaw = order.observaciones || '';
+        if (obsRaw.startsWith('{')) {
+            const meta = JSON.parse(obsRaw);
+            if (Array.isArray(meta.pb)) pbIds = meta.pb;
+        }
+    } catch(e) {}
+
     const { error } = await supabase.from('pedidos').update(updateData).eq('id', order.id);
     if (error) { showToast('❌ Error: ' + error.message); showSyncStatus('offline'); return; }
+
+    // Notificar a Sistema de Pedidos si el pedido vino de allí
+    if (pbIds.length > 0 && estado !== 'fallido') {
+        fetch('https://sistema-pedidos-pink.vercel.app/api/marcar-entregado', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pb_ids: pbIds, secret: 'leno-pb-sync-2024' })
+        }).catch(() => {});
+    }
 
     // Update stock for delivered items
     if (estado !== 'fallido') {
