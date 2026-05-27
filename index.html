@@ -318,6 +318,17 @@
     </style>
 </head>
 <body>
+    <!-- PANTALLA SELECCIÓN REPARTIDOR -->
+    <div id="repSeleccionOverlay" style="display:none;position:fixed;inset:0;background:#1c1917;z-index:9999;display:none;align-items:center;justify-content:center;padding:24px;">
+        <div style="width:100%;max-width:360px;text-align:center;">
+            <div style="font-size:48px;margin-bottom:12px;">🚚</div>
+            <h2 style="color:#fafaf9;font-size:22px;font-weight:800;margin-bottom:6px;">¿Quién sos?</h2>
+            <p style="color:#78716c;font-size:14px;margin-bottom:28px;">Seleccioná tu nombre para ver tus entregas</p>
+            <div id="repSeleccionLista" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;"></div>
+            <p style="color:#44403c;font-size:12px;">Si tu nombre no aparece, pedile al admin que te agregue</p>
+        </div>
+    </div>
+
     <div class="sync-status" id="syncStatus">🔄 Sincronizando...</div>
     <div class="offline-banner" id="offlineBanner">⚠️ Sin conexión - Los cambios se guardarán localmente</div>
     <div class="header">
@@ -772,6 +783,7 @@ let DB = {
 
 // ==================== ROLES ====================
 const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+const esInicio = new URLSearchParams(window.location.search).get('inicio') === '1';
 
 function applyRoleUI() {
     const badge = document.getElementById('roleBadge');
@@ -782,8 +794,50 @@ function applyRoleUI() {
     } else {
         badge.textContent = '🚚 Repartidor';
         badge.className = 'role-badge badge-rep';
-        showSection('deliveries');
+
+        // Si viene del portal (?inicio=1) o no tiene nombre guardado → pedir selección
+        if (esInicio || !DB.config.repartidorName) {
+            DB.config.repartidorName = '';
+            saveLocalData();
+            mostrarSeleccionRepartidor();
+        } else {
+            showSection('deliveries');
+        }
     }
+}
+
+function mostrarSeleccionRepartidor() {
+    const overlay = document.getElementById('repSeleccionOverlay');
+    const lista = document.getElementById('repSeleccionLista');
+    overlay.style.display = 'flex';
+
+    if (!DB.repartidores || DB.repartidores.length === 0) {
+        lista.innerHTML = '<p style="color:#78716c;font-size:14px;">Cargando repartidores...</p>';
+        // Reintentar cuando ya hayan cargado
+        setTimeout(() => mostrarSeleccionRepartidor(), 1500);
+        return;
+    }
+
+    lista.innerHTML = DB.repartidores.map(r => `
+        <button onclick="elegirRepartidor('${r.id}', '${r.nombre.replace(/'/g, "\\'")}')"
+            style="width:100%;padding:18px;background:#292524;border:1px solid #3c3735;border-radius:14px;
+                   color:#fafaf9;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.15s;
+                   -webkit-tap-highlight-color:transparent;"
+            onmouseover="this.style.borderColor='#ea580c';this.style.background='#2d2420'"
+            onmouseout="this.style.borderColor='#3c3735';this.style.background='#292524'">
+            🚚 ${r.nombre}
+        </button>
+    `).join('');
+}
+
+function elegirRepartidor(id, nombre) {
+    DB.config.repartidorName = nombre;
+    saveLocalData();
+    document.getElementById('repSeleccionOverlay').style.display = 'none';
+    document.getElementById('headerSub').textContent = 'Online • ' + nombre;
+    document.getElementById('repartidorName').value = nombre;
+    renderMyDeliveries();
+    showSection('deliveries');
 }
 
 let currentDeliveryOrder = null;
